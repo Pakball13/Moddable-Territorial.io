@@ -1,0 +1,8 @@
+{
+  "name": "Simple Name Bots",
+  "version": "1.0.0",
+  "author": "Community",
+  "description": "Renames bots to short funny names like bob, ur mom, zack, bobir.",
+  "main": "main.js",
+  "gameVersion": 25
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Panorama Background",
+  "version": "0.1.0",
+  "author": "You",
+  "description": "Replaces the menu background with a scrollable panorama (Minecraft-style). Move your mouse to look around. Drop a wide image in assets/panorama.png to customize.",
+  "main": "main.js",
+  "gameVersion": 25
+}

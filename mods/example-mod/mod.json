@@ -1,0 +1,8 @@
+{
+  "name": "Example Mod",
+  "version": "1.0.0",
+  "author": "You",
+  "description": "Demonstrates mod hooks and a custom button.",
+  "main": "main.js",
+  "gameVersion": 25
+}
