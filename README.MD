@@ -12,7 +12,7 @@
 
 [![Version](https://img.shields.io/badge/version-2.0.0-3fb950?style=flat-square)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-3fb950?style=flat-square)](LICENSE)
-[![Mods](https://img.shields.io/badge/mods-30%2B-3fb950?style=flat-square)](https://github.com/Pakball13/moddatorial.io/discussions)
+[![Mods](https://img.shields.io/badge/mods-30%2B-3fb950?style=flat-square)](https://github.com/Pakball13/modatorial.io/discussions)
 [![Discord](https://img.shields.io/badge/discord-join-5865F2?style=flat-square)](https://discord.gg/WUYW6Uy9JM)
 [![Made with JS](https://img.shields.io/badge/made%20with-vanilla%20JS-yellow?style=flat-square)](#)
 
@@ -29,7 +29,7 @@
 <details>
 <summary>Click to expand</summary>
 
-- [What is Modatorial.io?](#-what-is-moddatorialio)
+- [What is Modatorial.io?](#-what-is-modatorialio)
 - [Features](#-features)
 - [Screenshots](#-screenshots)
 - [Installation](#-installation)
@@ -168,11 +168,11 @@ Modatorial.io, territorial.io behaves exactly as it did before.
 ### Download
 
 ```bash
-git clone https://github.com/Pakball13/moddatorial.io.git
-cd moddatorial.io
+git clone https://github.com/Pakball13/modatorial.io.git
+cd modatorial.io
 ```
 
-Or download a [ZIP release](https://github.com/Pakball13/moddatorial.io/releases).
+Or download a [ZIP release](https://github.com/Pakball13/modatorial.io/releases).
 
 ### Run it locally
 
@@ -233,7 +233,7 @@ That's it. You've modded territorial.io.
 ## 📁 Folder Structure
 
 ```
-moddatorial.io/
+modatorial.io/
 ├── index.html              ← game shell (unmodified)
 ├── modLoader.js            ← the loader (patches browser APIs)
 ├── version-hider.js        ← optional: hides "DD Mon YYYY [x.y.z]"
