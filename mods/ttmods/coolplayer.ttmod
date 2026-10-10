@@ -1,0 +1,58 @@
+<ttmod>
+{
+  "id": "coolplayer",
+  "name": "Cool Player Pack",
+  "version": "1.1.0",
+  "author": "Pakball13",
+  "description": "Name, color, font, flags, music, and a Discord button — all in one file.",
+
+  "config": {
+    "userName":        "CoolPlayer",
+    "userColor":       "#00ff88",
+    "font":            "Inter, system-ui",
+    "flags":           ["🇵🇰", "🔥"],
+
+    "theme": { "accent": "#00ff88" },
+    "presetColors": ["#00ff88", "#ff5577", "#4488ff", "#ffaa00"],
+
+    "layout":           "sidebar",
+    "sidebarCollapsed": false,
+
+    "hideMultiplayer": true,
+    "hideVersion":     true,
+    "hideLogo":        true,
+    "hideMenuButtons": ["Logs", "Clan Charts"],
+
+    "showFps":    true,
+    "showClock":  true,
+    "clockFormat":"24h",
+
+    "watermark":         "CoolPlayer · Modatorial.io",
+    "watermarkPosition": "bottom-right",
+
+    "statusBar": "🎮 Cool Player Pack v1.1.0 · loaded",
+
+    "startupMessage": "Welcome, CoolPlayer! 🎉",
+    "cursor":         "crosshair",
+
+    "musicVolume": 0.3,
+
+    "buttons": [
+      { "label": "💬 Discord", "url": "https://discord.gg/example" },
+      { "label": "🎨 Color",   "toast": "Accent is set to green!" }
+    ],
+
+    "quickMessages": [
+      { "text": "GG!",  "key": "KeyG" },
+      { "text": "Nice","key": "KeyN" }
+    ],
+
+    "confirmExit":    true,
+    "autoSkipSplash": false
+  }
+}
+</ttmod>
+<script>
+// Anything complicated goes here — full api.* access.
+api.log('Cool Player script running');
+</script>

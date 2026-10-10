@@ -1,36 +1,44 @@
-<!DOCTYPE html><html lang="en"><head>
-  <meta charset="utf-8">
-  <title>Territorial.io</title>
-  <meta name="description" content="Territorial.io - The Art of Conquest">
-  <meta name="keywords" content="territorial.io, territorial, territorial game, conquest game, conquer game, territory game">
-  <meta name="author" content="David Tschacher">
-  <meta name="viewport" content="width=device-width, maximum-scale=1">
+<head>
+<meta charset="utf-8">
+<title>Modatorial.io</title>
+<meta name="description" content="Modatorial.io - The Moddable Conquest">
+<meta name="author" content="Pakball13">
+<meta name="viewport" content="width=device-width, maximum-scale=1">
 
-  <style>
-    html,
-    body {
-      overflow: hidden;
-      padding: 0;
-      margin: 0;
-      background: black;
-      color: white;
-    }
+<!-- Favicon -->
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="favicon.ico">
+<link rel="mask-icon" href="favicon.ico">
 
-    * {
-      box-sizing: border-box;
-    }
+<link rel="stylesheet" href="css/themes.css">
+<link rel="stylesheet" href="css/client.css">
 
-    a {
-      color: rgb(225, 225, 255);
-    }
-  </style>
-<style id="ss"></style><script src="../challenges.cloudflare.com/turnstile/v0/api_render=explicit.js" async=""></script><link rel="preload" href="cdn-cgi/rum" crossorigin=""></head>
+<style>
+  html, body {
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+    background: black;
+    color: white;
+  }
+  * { box-sizing: border-box; }
+  a { color: rgb(225, 225, 255); }
+</style>
+</head>
 
 <body>
 
   <canvas id="canvasA" width="1280" height="720" style="width: 1280px; height: 720px;"></canvas>
 
-  <script src="modLoader.js"></script>
+<script src="firebase-config.js"></script>
+<script src="ttmod-translator.js"></script>
+<script src="ttmod-maker.js"></script>
+<script src="modLoader.js"></script>
+<script src="sounds.js"></script>
+<script src="mod-store.js"></script>
+<script src="client-features.js"></script>
+<script src="account.js"></script>
   <script>
   "use strict";
   (function () {

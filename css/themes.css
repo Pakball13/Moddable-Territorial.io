@@ -1,0 +1,114 @@
+/* ============================================================
+ * Modatorial theme presets
+ * Each theme sets --tt-* CSS variables on :root.
+ * Applied/removed by modLoader.js.
+ * ============================================================ */
+
+:root {
+  /* Default theme = Midnight */
+  --tt-accent:    #3fb950;
+  --tt-bg:        #0a0c10;
+  --tt-card:      #161b22;
+  --tt-border:    #30363d;
+  --tt-text:      #e6edf3;
+  --tt-text-dim:  #7d8590;
+  --tt-danger:    #f85149;
+  --tt-warn:      #d29922;
+  --tt-accent-2:  #58a6ff;
+}
+
+html[data-tt-theme="cyberpunk"] {
+  --tt-accent:    #00ffff;
+  --tt-bg:        #0a0014;
+  --tt-card:      #1a0030;
+  --tt-border:    #ff00aa;
+  --tt-text:      #ff88ff;
+  --tt-text-dim:  #aa66cc;
+  --tt-danger:    #ff3366;
+  --tt-warn:      #ffaa00;
+  --tt-accent-2:  #00ffaa;
+}
+
+html[data-tt-theme="forest"] {
+  --tt-accent:    #8bc34a;
+  --tt-bg:        #0d1f0d;
+  --tt-card:      #1a2e1a;
+  --tt-border:    #2e4a2e;
+  --tt-text:      #d4e8d4;
+  --tt-text-dim:  #7a967a;
+  --tt-danger:    #cc4444;
+  --tt-warn:      #cc9933;
+  --tt-accent-2:  #66bbaa;
+}
+
+html[data-tt-theme="mono"] {
+  --tt-accent:    #dddddd;
+  --tt-bg:        #000000;
+  --tt-card:      #111111;
+  --tt-border:    #333333;
+  --tt-text:      #eeeeee;
+  --tt-text-dim:  #888888;
+  --tt-danger:    #ff4444;
+  --tt-warn:      #ccaa00;
+  --tt-accent-2:  #aaaaaa;
+}
+
+html[data-tt-theme="sunset"] {
+  --tt-accent:    #ff8844;
+  --tt-bg:        #1a0a1e;
+  --tt-card:      #2a1520;
+  --tt-border:    #553355;
+  --tt-text:      #ffddee;
+  --tt-text-dim:  #aa7788;
+  --tt-danger:    #ff4466;
+  --tt-warn:      #ffaa33;
+  --tt-accent-2:  #cc66ff;
+}
+
+/* Chrome bar uses accent-aware background */
+#tt-chrome {
+  background: linear-gradient(
+    180deg,
+    rgba(20,20,20,0.94),
+    var(--tt-bg, rgba(10,11,14,0.94))
+  ) !important;
+  border-bottom-color: var(--tt-border, rgba(255,255,255,0.08)) !important;
+  color: var(--tt-text, #e8eaf0) !important;
+}
+
+#tt-chrome button {
+  color: var(--tt-text, #e8eaf0) !important;
+  border-color: var(--tt-border, rgba(255,255,255,0.1)) !important;
+}
+#tt-chrome button:hover {
+  color: var(--tt-accent, #e8eaf0) !important;
+}
+
+/* Page transition overlay */
+#tt-transition {
+  position: fixed;
+  inset: 0;
+  background: var(--tt-bg, #0a0c10);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 99997;
+  transition: opacity 0.22s ease;
+}
+#tt-transition.active {
+  opacity: 1;
+}
+
+/* Mod settings modal */
+#tt-settings-modal {
+  font-family: system-ui, sans-serif;
+}
+#tt-settings-modal input[type="range"] {
+  accent-color: var(--tt-accent, #3fb950);
+}
+#tt-settings-modal .tt-setting-row:hover {
+  background: rgba(255,255,255,0.04) !important;
+}
+#tt-settings-modal .tt-accent-btn {
+  border-color: var(--tt-accent, #3fb950) !important;
+  color: var(--tt-accent, #3fb950) !important;
+}

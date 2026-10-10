@@ -1,0 +1,521 @@
+<head>
+<meta charset="utf-8">
+<title>My Account · Modatorial.io</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Favicon -->
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="favicon.ico">
+<link rel="mask-icon" href="favicon.ico">
+
+<style>
+  :root {
+    --bg:        #0a0c10;
+    --bg-card:   #161b22;
+    --border:    #30363d;
+    --text:      #e6edf3;
+    --text-dim:  #7d8590;
+    --accent:    #3fb950;
+    --accent-2:  #58a6ff;
+    --warn:      #d29922;
+    --danger:    #f85149;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+  }
+
+  /* ---------- header ---------- */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 22px;
+    background: linear-gradient(180deg, rgba(18,20,24,0.98), rgba(10,11,14,0.96));
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .header .brand {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    flex: 1;
+  }
+  .header .brand .badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    margin-left: 8px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #062a0d;
+    vertical-align: middle;
+  }
+  .header button {
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .header button:hover { background: rgba(255,255,255,0.12); }
+  .header button.danger {
+    background: #4a1616;
+    border-color: #8b2d2d;
+  }
+  .header button.danger:hover { background: #6a2020; }
+
+  /* ---------- layout ---------- */
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 24px 22px 48px;
+    display: grid;
+    gap: 16px;
+  }
+
+  /* ---------- card ---------- */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .card h2 {
+    margin: 0 0 14px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent-2);
+  }
+
+  /* ---------- level card ---------- */
+  .level-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .level-num {
+    font-size: 64px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(63,185,80,.45);
+    min-width: 90px;
+    text-align: center;
+  }
+  .level-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .level-label {
+    font-size: 15px;
+    opacity: .9;
+  }
+  .xp-bar {
+    height: 16px;
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  .xp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #238636, #3fb950);
+    transition: width .5s cubic-bezier(.34,1.56,.64,1);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .xp-need {
+    font-size: 12px;
+    opacity: .6;
+  }
+
+  /* ---------- stat grid ---------- */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  .stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(255,255,255,.06);
+  }
+  .stat:last-child { border-bottom: 0; }
+  .stat .k { opacity: .75; font-size: 13px; }
+  .stat .v {
+    font-weight: 700;
+    font-size: 20px;
+    font-feature-settings: "tnum";
+  }
+  .stat .v.green  { color: var(--accent); }
+  .stat .v.red    { color: var(--danger); }
+  .stat .v.blue   { color: var(--accent-2); }
+  .stat .v.yellow { color: var(--warn); }
+
+  /* ---------- chart ---------- */
+  .chart {
+    width: 100%;
+    height: 220px;
+    background: #0a0c10;
+    border-radius: 8px;
+    display: block;
+  }
+
+  /* ---------- chips ---------- */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #21262d;
+    border: 1px solid var(--border);
+    color: #c9d1d9;
+  }
+  .chip.current {
+    border-color: var(--accent);
+    background: rgba(63,185,80,.12);
+    color: #adf5b6;
+  }
+  .chip.current::before {
+    content: "★ ";
+    color: var(--accent);
+  }
+
+  /* ---------- empty ---------- */
+  .empty {
+    font-size: 13px;
+    opacity: .55;
+    font-style: italic;
+  }
+
+  /* ---------- history list ---------- */
+  .hist-item {
+    display: grid;
+    grid-template-columns: 26px 1fr 80px 90px;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(255,255,255,.06);
+    font-size: 13px;
+  }
+  .hist-item:last-child { border-bottom: 0; }
+  .hist-icon { text-align: center; font-size: 16px; }
+  .hist-date { color: var(--text-dim); font-size: 12px; }
+  .hist-dur  { text-align: right; font-feature-settings: "tnum"; opacity: .85; }
+  .hist-result { font-weight: 700; text-align: right; }
+  .hist-result.win  { color: var(--accent); }
+  .hist-result.loss { color: var(--danger); }
+  .hist-result.surrender { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">🧑 My Account<span class="badge">Modatorial</span></div>
+  <button id="btn-reset" class="danger">⟲ Reset Stats</button>
+  <button id="btn-close">✕ Close</button>
+</div>
+
+<div class="wrap">
+
+  <div class="card" id="card-level">
+    <h2>⭐ Level</h2>
+    <div class="level-row">
+      <div class="level-num" id="lvl-num">1</div>
+      <div class="level-meta">
+        <div class="level-label" id="lvl-label">Level 1 · 0 XP total</div>
+        <div class="xp-bar"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+        <div class="xp-need" id="lvl-need">0 / 100 XP to level 2</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>🎮 Games</h2>
+      <div class="stat"><span class="k">Total played</span><span class="v blue"  id="s-games">0</span></div>
+      <div class="stat"><span class="k">Wins</span>         <span class="v green" id="s-wins">0</span></div>
+      <div class="stat"><span class="k">Losses</span>       <span class="v red"   id="s-losses">0</span></div>
+      <div class="stat"><span class="k">Surrenders</span>   <span class="v yellow"id="s-surrender">0</span></div>
+      <div class="stat"><span class="k">Win rate</span>     <span class="v green" id="s-wr">—</span></div>
+    </div>
+
+    <div class="card">
+      <h2>⏱ Playtime</h2>
+      <div class="stat"><span class="k">Total</span>     <span class="v blue"   id="s-total">0s</span></div>
+      <div class="stat"><span class="k">Per match</span> <span class="v yellow" id="s-avg">0s</span></div>
+      <div class="stat"><span class="k">Hours</span>     <span class="v green"  id="s-hours">0h</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📊 Wins vs Losses</h2>
+    <canvas id="chart" class="chart" width="900" height="220"></canvas>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>🔧 Last Match Mods</h2>
+      <div class="chips" id="last-mods"></div>
+    </div>
+
+    <div class="card">
+      <h2>📛 Previous Usernames</h2>
+      <div class="chips" id="usernames"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📜 Recent Matches</h2>
+    <div id="history"></div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const KEY = 'tt-account-v1';
+  const defaultState = () => ({
+    gamesPlayed: 0, wins: 0, losses: 0, surrenders: 0,
+    playtimeMs: 0, xp: 0, lastMods: [], usernames: [],
+    history: [], firstSeen: Date.now(), lastSeen: Date.now()
+  });
+
+  let state = defaultState();
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) state = Object.assign(defaultState(), JSON.parse(raw));
+  } catch (e) { console.warn('Could not load account state:', e); }
+
+  /* ---------- level curve ---------- */
+  const xpForLevel = lvl => 50 * lvl * lvl + 50 * lvl;
+  function levelFromXp(xp) { let l = 0; while (xp >= xpForLevel(l + 1)) l++; return l; }
+  function xpProgress(xp) {
+    const lvl  = levelFromXp(xp);
+    const cur  = xpForLevel(lvl);
+    const next = xpForLevel(lvl + 1);
+    return { level: lvl, cur, next, need: next - cur, have: xp - cur };
+  }
+
+  /* ---------- time ---------- */
+  function fmtTime(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s % 60}s`;
+    return `${s}s`;
+  }
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    const pad = n => (n < 10 ? '0' : '') + n;
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+  /* ---------- chart ---------- */
+  function drawChart() {
+    const canvas = document.getElementById('chart');
+    const g = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    g.clearRect(0, 0, W, H);
+
+    const values = [state.wins, state.losses, state.surrenders];
+    const labels = ['Wins', 'Losses', 'Surrenders'];
+    const colors = ['#3fb950', '#f85149', '#d29922'];
+    const max = Math.max(1, ...values);
+
+    const padL = 44, padR = 16, padT = 16, padB = 40;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+    const barW = chartW / values.length;
+    const gap = barW * 0.25;
+
+    // grid
+    g.strokeStyle = 'rgba(255,255,255,0.06)';
+    g.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = padT + (chartH * i / 4);
+      g.beginPath();
+      g.moveTo(padL, y);
+      g.lineTo(W - padR, y);
+      g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.35)';
+      g.font = '11px system-ui';
+      g.textAlign = 'right';
+      g.textBaseline = 'middle';
+      g.fillText(String(Math.round(max - max * i / 4)), padL - 8, y);
+    }
+
+    values.forEach((v, i) => {
+      const x = padL + i * barW + gap / 2;
+      const h = (v / max) * chartH;
+      const y = padT + chartH - h;
+      g.fillStyle = colors[i];
+      g.fillRect(x, y, barW - gap, h);
+      if (v > 0) {
+        g.fillStyle = '#fff';
+        g.font = '600 12px system-ui';
+        g.textAlign = 'center';
+        g.textBaseline = 'bottom';
+        g.fillText(String(v), x + (barW - gap) / 2, y - 4);
+      }
+      g.fillStyle = 'rgba(255,255,255,0.7)';
+      g.font = '12px system-ui';
+      g.textAlign = 'center';
+      g.textBaseline = 'top';
+      g.fillText(labels[i], x + (barW - gap) / 2, padT + chartH + 8);
+    });
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    const p = xpProgress(state.xp);
+    document.getElementById('lvl-num').textContent = p.level;
+    document.getElementById('lvl-label').textContent = `Level ${p.level} · ${state.xp} XP total`;
+    document.getElementById('lvl-need').textContent =
+      `${p.have} / ${p.need} XP to level ${p.level + 1}`;
+    const pct = p.need ? Math.min(100, Math.round(100 * p.have / p.need)) : 0;
+    document.getElementById('xp-fill').style.width = pct + '%';
+
+    document.getElementById('s-games').textContent     = state.gamesPlayed;
+    document.getElementById('s-wins').textContent      = state.wins;
+    document.getElementById('s-losses').textContent    = state.losses;
+    document.getElementById('s-surrender').textContent = state.surrenders;
+    document.getElementById('s-wr').textContent =
+      state.gamesPlayed > 0 ? Math.round(100 * state.wins / state.gamesPlayed) + '%' : '—';
+
+    document.getElementById('s-total').textContent = fmtTime(state.playtimeMs);
+    const avg = state.gamesPlayed > 0 ? state.playtimeMs / state.gamesPlayed : 0;
+    document.getElementById('s-avg').textContent = fmtTime(avg);
+    document.getElementById('s-hours').textContent = Math.floor(state.playtimeMs / 3600000) + 'h';
+
+    // last mods
+    const lastMods = document.getElementById('last-mods');
+    lastMods.innerHTML = '';
+    if (state.lastMods && state.lastMods.length) {
+      state.lastMods.forEach(name => {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.textContent = name;
+        lastMods.appendChild(chip);
+      });
+    } else {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'Play a match with mods enabled to see them here.';
+      lastMods.appendChild(e);
+    }
+
+    // usernames
+    const users = document.getElementById('usernames');
+    users.innerHTML = '';
+    if (state.usernames && state.usernames.length) {
+      [...state.usernames].reverse().forEach((u, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (i === 0 ? ' current' : '');
+        chip.textContent = u;
+        users.appendChild(chip);
+      });
+    } else {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'Type a username and play a match.';
+      users.appendChild(e);
+    }
+
+    // history
+    const hist = document.getElementById('history');
+    hist.innerHTML = '';
+    if (state.history && state.history.length) {
+      state.history.slice(0, 20).forEach(h => {
+        const row = document.createElement('div');
+        row.className = 'hist-item';
+        const icon = h.outcome === 'win' ? '🏆'
+                   : h.outcome === 'surrender' ? '🏳️'
+                   : h.outcome === 'loss' ? '💀'
+                   : '❔';
+        row.innerHTML =
+          `<div class="hist-icon">${icon}</div>
+           <div class="hist-date">${esc(fmtDate(h.ts))}</div>
+           <div class="hist-dur">${esc(fmtTime(h.durationMs || 0))}</div>
+           <div class="hist-result ${h.outcome}">${esc(h.outcome || 'unknown')}</div>`;
+        hist.appendChild(row);
+      });
+    } else {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'No matches recorded yet.';
+      hist.appendChild(e);
+    }
+
+    drawChart();
+  }
+
+  /* ---------- actions ---------- */
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    if (!confirm('Reset all account stats? This cannot be undone.')) return;
+    state = defaultState();
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    render();
+  });
+
+  document.getElementById('btn-close').addEventListener('click', () => {
+    let dest = 'game.html';
+    try {
+      const back = sessionStorage.getItem('tt-account-return');
+      if (back) dest = back;
+    } catch {}
+    location.href = dest;
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('btn-close').click();
+  });
+
+  /* ---------- live updates ---------- */
+  window.addEventListener('storage', e => {
+    if (e.key === KEY) {
+      try { state = Object.assign(defaultState(), JSON.parse(e.newValue || '{}')); render(); }
+      catch {}
+    }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

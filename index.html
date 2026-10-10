@@ -5,6 +5,9 @@
 <title>Modatorial.io</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="css/splash.css">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+<link rel="apple-touch-icon" href="favicon.ico">
 </head>
 <body>
 
@@ -18,6 +21,7 @@
 
   <div id="menu">
     <button id="btn-play">▶  Play</button>
+    <button id="btn-account" class="secondary">🧑  My Account</button>
     <button id="btn-credits" class="secondary">🎬  Credits</button>
     <button id="btn-readme"  class="secondary">📖  Readme</button>
   </div>
@@ -31,29 +35,17 @@
   <div class="modal-inner">
     <button class="modal-close" data-close>✕</button>
     <h2>🎬 Credits</h2>
-
     <h3>Modatorial.io</h3>
-    <p>A modded client for <strong>Territorial.io</strong>. Built on a mod loader inspired by Minecraft's ecosystem.</p>
-
+    <p>A modded client for <strong>Territorial.io</strong>.</p>
     <h3>Original Game</h3>
-    <p><strong>Territorial.io</strong> — created by <strong>David Tschacher</strong>.<br>
-    Official site: <a href="https://territorial.io" target="_blank">territorial.io</a></p>
-
-    <h3>Mod Loader &amp; Client</h3>
-    <p>Extends the game with hooks for networking, rendering, input, and audio. Ships with a mod menu (<kbd>F10</kbd>), layout switcher, and panorama background.</p>
-
-    <h3>Logo Art</h3>
-    <p>Logo designed by <strong>modderboii</strong>.</p>
-
-    <h3>Mods Shipped</h3>
+    <p><strong>Territorial.io</strong> — by <strong>David Tschacher</strong>.<br>
+    <a href="https://territorial.io" target="_blank">territorial.io</a></p>
+    <h3>Team</h3>
     <ul>
-      <li><strong>Simple Name Bots</strong> — rename every bot to <em>bob</em>, <em>ur mom</em>, <em>zack</em>, <em>bobir</em>, and friends.</li>
-      <li><strong>Panorama Background</strong> — Minecraft-style scrolling menu background with mouse look.</li>
-      <li><strong>Example Mod</strong> — reference template for writing your own mods.</li>
+      <li><strong>Pakball13</strong> — Founder · Lead Developer</li>
+      <li><strong>Roble Code</strong> — Bug Hunter · Contributor</li>
+      <li><strong>ModderBoii</strong> — Logo &amp; SVG icons</li>
     </ul>
-
-    <h3>Special Thanks</h3>
-    <p>Everyone in the modding community. And you, for playing.</p>
   </div>
 </div>
 
@@ -82,22 +74,18 @@
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
   let skipped = false;
-  function skipAll() {
-    if (skipped) return;
-    skipped = true;
-    if ($logo) $logo.classList.add('show');
-    showFinalMenu();
-  }
-  window.addEventListener('keydown', skipAll);
-  window.addEventListener('mousedown', skipAll);
+  let menuShown = false;
 
-  /* ---------- panorama loader (uses the mod's image if present) ---------- */
+  /* ============================================================
+   * PANORAMA LOADER
+   * ============================================================ */
   function loadPanorama() {
     const candidates = [
       'mods/panorama-bg/assets/panorama.png',
       'mods/panorama-bg/assets/panorama.jpg',
       'mods/panorama-bg/assets/panorama.jpeg',
-      'mods/panorama-bg/assets/panorama.webp'
+      'mods/panorama-bg/assets/panorama.webp',
+      'assets/panorama.png'
     ];
     let i = 0;
     const tryNext = () => {
@@ -111,6 +99,8 @@
       const img = new Image();
       img.onload  = () => {
         $pano.style.backgroundImage = `url("${url}")`;
+        $pano.style.backgroundSize  = 'cover';
+        $pano.style.backgroundPosition = 'center';
         $pano.classList.add('loaded');
       };
       img.onerror = tryNext;
@@ -119,143 +109,197 @@
     tryNext();
   }
 
-  /* ---------- logo load check ---------- */
+  /* ============================================================
+   * LOGO HANDLING
+   * ============================================================ */
   function logoReady() {
     return $logo && $logo.complete && $logo.naturalWidth > 0;
   }
   if ($logo) {
-    $logo.onerror = () => {
+    $logo.addEventListener('error', () => {
       $logo.style.display = 'none';
-      // If the logo never loads, adjust the letters' vertical position
-      $letters.style.top = '50%';
-    };
+      if ($letters) $letters.style.top = '50%';
+    });
   }
 
-  /* ---------- animation ---------- */
-  async function animate() {
-    await wait(300);
+  /* ============================================================
+   * SKIP HANDLERS
+   * ============================================================ */
+  function skipAll() {
     if (skipped) return;
-
-    // --- PHASE 1 : TERRITORIAL.IO falls from the sky ---
-    $letters.innerHTML = '';
-    for (const ch of START_TEXT) {
-      const s = document.createElement('span');
-      s.textContent = ch === ' ' ? '\u00A0' : ch;
-      const xJit = (Math.random() - 0.5) * 40;
-      const rot  = (Math.random() - 0.5) * 12;
-      s.style.transform = `translate(${xJit}px, -600px) rotate(${rot}deg)`;
-      s.style.transition = 'none';
-      $letters.appendChild(s);
-    }
-    void $letters.offsetWidth; // force reflow
-    [...$letters.children].forEach((s, i) => {
-      const d = 60 + i * 45 + Math.random() * 120;
-      setTimeout(() => {
-        s.style.transition = 'opacity 0.35s ease, transform 0.85s cubic-bezier(0.22, 1.4, 0.36, 1)';
-        s.style.opacity = '1';
-        s.style.transform = 'translate(0, 0) rotate(0deg)';
-      }, d);
-    });
-    await wait(1900);
-    if (skipped) return;
-
-    // --- PHASE 2 : morph into MODATORIAL.IO ---
-    [...$letters.children].forEach((s, i) => {
-      setTimeout(() => {
-        s.style.transition = 'opacity 0.35s, transform 0.35s';
-        s.style.opacity = '0';
-        s.style.transform = 'translateY(-30px) scale(0.5)';
-      }, i * 25);
-    });
-    await wait(500);
-    $letters.innerHTML = '';
-
-    for (const ch of FINAL_TEXT) {
-      const s = document.createElement('span');
-      s.textContent = ch === ' ' ? '\u00A0' : ch;
-      s.style.opacity = '0';
-      s.style.transform = 'translateY(60px) scale(0.4)';
-      s.style.transition = 'none';
-      $letters.appendChild(s);
-    }
-    void $letters.offsetWidth;
-    [...$letters.children].forEach((s, i) => {
-      const d = 40 + i * 40;
-      setTimeout(() => {
-        s.style.transition = 'opacity 0.3s, transform 0.55s cubic-bezier(0.22, 1.5, 0.36, 1)';
-        s.style.opacity = '1';
-        s.style.transform = 'translateY(0) scale(1)';
-      }, d);
-    });
-    await wait(1100);
-    if (skipped) return;
-
-    // --- PHASE 2.5 : logo fades in above the letters ---
-    if (logoReady()) {
-      $logo.classList.add('show');
-      await wait(700);
-      if (skipped) return;
-    }
-
-    // --- PHASE 3 : panorama fades in behind everything ---
-    loadPanorama();
-    await wait(1100);
-    if (skipped) return;
-
-    // --- PHASE 4 : letters glow + white flash ---
-    [...$letters.children].forEach((s, i) => {
-      setTimeout(() => {
-        s.style.transition = 'color 0.4s, text-shadow 0.6s';
-        s.style.color = '#fff';
-        s.style.textShadow = '0 0 18px #fff, 0 0 40px #aaf, 0 0 90px #7af';
-      }, i * 30);
-    });
-    // Logo brightens too
-    if (logoReady()) {
-      $logo.style.filter = 'drop-shadow(0 0 40px #fff) drop-shadow(0 0 80px #7af)';
-    }
-    await wait(650);
-    if (skipped) return;
-
-    $flash.style.opacity = '0.95';
-    await wait(220);
-    $flash.style.opacity = '0';
-    await wait(220);
-    if (skipped) return;
-
-    // --- PHASE 5 : fade to black ---
-    [...$letters.children].forEach((s, i) => {
-      setTimeout(() => {
-        s.style.transition = 'opacity 0.7s';
-        s.style.opacity = '0';
-      }, i * 25);
-    });
-    if (logoReady()) {
-      $logo.style.transition = 'opacity 0.7s';
-      $logo.style.opacity = '0';
-    }
-    $pano.classList.add('fade-out');
-    await wait(1200);
-    if (skipped) return;
-
+    skipped = true;
     showFinalMenu();
+  }
+  window.addEventListener('keydown', skipAll);
+  window.addEventListener('mousedown', skipAll);
+
+  /* ============================================================
+   * ANIMATION
+   * ============================================================ */
+  async function animate() {
+    try {
+      await wait(300);
+      if (skipped) return;
+
+      /* ---- PHASE 1 : letters fall from sky ---- */
+      $letters.innerHTML = '';
+      for (const ch of START_TEXT) {
+        const s = document.createElement('span');
+        s.textContent = ch === ' ' ? '\u00A0' : ch;
+        const xJit = (Math.random() - 0.5) * 40;
+        const rot  = (Math.random() - 0.5) * 12;
+        s.style.transform  = `translate(${xJit}px, -600px) rotate(${rot}deg)`;
+        s.style.transition = 'none';
+        $letters.appendChild(s);
+      }
+      void $letters.offsetWidth;   /* force reflow */
+
+      [...$letters.children].forEach((s, i) => {
+        const d = 60 + i * 45 + Math.random() * 120;
+        setTimeout(() => {
+          s.style.transition = 'opacity 0.35s ease, transform 0.85s cubic-bezier(0.22, 1.4, 0.36, 1)';
+          s.style.opacity    = '1';
+          s.style.transform  = 'translate(0, 0) rotate(0deg)';
+        }, d);
+      });
+
+      await wait(1900);
+      if (skipped) return;
+
+      /* ---- PHASE 2 : morph to MODATORIAL.IO ---- */
+      [...$letters.children].forEach((s, i) => {
+        setTimeout(() => {
+          s.style.transition = 'opacity 0.35s, transform 0.35s';
+          s.style.opacity    = '0';
+          s.style.transform  = 'translateY(-30px) scale(0.5)';
+        }, i * 25);
+      });
+      await wait(500);
+      $letters.innerHTML = '';
+
+      for (const ch of FINAL_TEXT) {
+        const s = document.createElement('span');
+        s.textContent = ch === ' ' ? '\u00A0' : ch;
+        s.style.opacity = '0';
+        s.style.transform = 'translateY(60px) scale(0.4)';
+        s.style.transition = 'none';
+        $letters.appendChild(s);
+      }
+      void $letters.offsetWidth;
+      [...$letters.children].forEach((s, i) => {
+        const d = 40 + i * 40;
+        setTimeout(() => {
+          s.style.transition = 'opacity 0.3s, transform 0.55s cubic-bezier(0.22, 1.5, 0.36, 1)';
+          s.style.opacity    = '1';
+          s.style.transform  = 'translateY(0) scale(1)';
+        }, d);
+      });
+
+      await wait(1100);
+      if (skipped) return;
+
+      /* ---- PHASE 3 : logo fades in ---- */
+      if (logoReady()) {
+        $logo.classList.add('show');
+        await wait(700);
+        if (skipped) return;
+      }
+
+      /* ---- PHASE 4 : panorama fades in ---- */
+      loadPanorama();
+      await wait(1100);
+      if (skipped) return;
+
+      /* ---- PHASE 5 : glow + flash ---- */
+      [...$letters.children].forEach((s, i) => {
+        setTimeout(() => {
+          s.style.transition  = 'color 0.4s, text-shadow 0.6s';
+          s.style.color       = '#fff';
+          s.style.textShadow  = '0 0 18px #fff, 0 0 40px #aaf, 0 0 90px #7af';
+        }, i * 30);
+      });
+      if (logoReady()) {
+        $logo.style.filter = 'drop-shadow(0 0 40px #fff) drop-shadow(0 0 80px #7af)';
+      }
+      await wait(650);
+      if (skipped) return;
+
+      $flash.style.opacity = '0.95';
+      await wait(220);
+      $flash.style.opacity = '0';
+      await wait(220);
+      if (skipped) return;
+
+      /* ---- PHASE 6 : fade to black ---- */
+      [...$letters.children].forEach((s, i) => {
+        setTimeout(() => {
+          s.style.transition = 'opacity 0.7s';
+          s.style.opacity    = '0';
+        }, i * 25);
+      });
+      if (logoReady()) {
+        $logo.style.transition = 'opacity 0.7s';
+        $logo.style.opacity    = '0';
+      }
+      $pano.classList.add('fade-out');
+
+      await wait(1200);
+
+    } catch (e) {
+      console.error('[Splash] Animation error:', e);
+    }
+
+    /* ALWAYS show the menu, no matter what happened */
+    if (!skipped) showFinalMenu();
   }
 
   function showFinalMenu() {
-    $letters.innerHTML = '';
-    $pano.classList.remove('loaded');
-    $pano.style.background = '#000';
-    $pano.style.transition = 'none';
-    if ($logo) { $logo.classList.remove('show'); $logo.style.opacity = '0'; }
-    $menu.classList.add('show');
-    document.getElementById('skip').style.opacity = '0';
+    if (menuShown) return;
+    menuShown = true;
+
+    try { $letters.innerHTML = ''; } catch {}
+
+    try {
+      $pano.classList.remove('loaded');
+      $pano.classList.add('fade-out');
+      $pano.style.backgroundImage = 'none';
+      $pano.style.background = '#000';
+    } catch {}
+
+    try {
+      if ($logo) { $logo.classList.remove('show'); $logo.style.opacity = '0'; }
+    } catch {}
+
+    /* Show the menu */
+    try { $menu.classList.add('show'); } catch {}
+    try { document.getElementById('skip').style.opacity = '0'; } catch {}
+
+    console.log('[Splash] Menu shown');
   }
 
-  /* ---------- buttons ---------- */
+  /* ============================================================
+   * FALLBACK: force menu after 12s no matter what
+   * ============================================================ */
+  setTimeout(() => {
+    if (!menuShown) {
+      console.warn('[Splash] Animation timeout — forcing menu');
+      showFinalMenu();
+    }
+  }, 12000);
+
+  /* ============================================================
+   * BUTTON HANDLERS
+   * ============================================================ */
   document.getElementById('btn-play').addEventListener('click', () => {
+    console.log('[Splash] Play clicked → game.html');
     document.body.style.transition = 'opacity 0.45s';
     document.body.style.opacity = '0';
     setTimeout(() => { location.href = 'game.html'; }, 450);
+  });
+
+  document.getElementById('btn-account').addEventListener('click', () => {
+    console.log('[Splash] Account clicked → account.html');
+    location.href = 'account.html';
   });
 
   document.getElementById('btn-credits').addEventListener('click', () => {
@@ -269,17 +313,21 @@
     pre.textContent = 'Loading…';
 
     const sources = ['MODDING.md', 'README.md', 'readme.md', 'Readme.md'];
+    let loaded = false;
     for (const src of sources) {
       try {
         const r = await fetch(src, { cache: 'no-store' });
         if (!r.ok) continue;
         pre.textContent = await r.text();
-        return;
+        loaded = true;
+        break;
       } catch {}
     }
-    pre.textContent =
-      'No MODDING.md or README.md found in the project root.\n\n' +
-      'Create one of those files next to index.html and it will be shown here.';
+    if (!loaded) {
+      pre.textContent =
+        'No MODDING.md or README.md found in the project root.\n\n' +
+        'Create one of those files next to index.html and it will be shown here.';
+    }
   });
 
   document.querySelectorAll('[data-close]').forEach(b => {
@@ -293,7 +341,9 @@
       document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
   });
 
-  /* ---------- go ---------- */
+  /* ============================================================
+   * GO
+   * ============================================================ */
   animate();
 })();
 </script>
