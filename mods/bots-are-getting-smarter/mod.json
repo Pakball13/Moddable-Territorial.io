@@ -1,0 +1,38 @@
+{
+  "id": "bots-are-getting-smarter",
+  "name": "Bots Are Getting Smarter",
+  "version": "1.0.0",
+  "author": "Modatorial",
+  "description": "Phase 1: captures bot decision data as training samples. Export as JSON, train offline, then load a policy back in.",
+  "gameVersion": 25,
+  "main": "main.js",
+  "settings": [
+    {
+      "id": "captureEnabled",
+      "type": "toggle",
+      "label": "Capture bot decisions",
+      "description": "Record (state, action) pairs while you play",
+      "default": true
+    },
+    {
+      "id": "captureRate",
+      "type": "slider",
+      "label": "Capture every N decisions",
+      "description": "1 = every decision (heavy), 50 = sparse sample",
+      "min": 1, "max": 50, "step": 1, "default": 10
+    },
+    {
+      "id": "captureHumansToo",
+      "type": "toggle",
+      "label": "Also capture human players",
+      "description": "Records your own decisions too (useful for imitation learning)",
+      "default": false
+    },
+    {
+      "id": "showHud",
+      "type": "toggle",
+      "label": "Show capture HUD",
+      "default": true
+    }
+  ]
+}

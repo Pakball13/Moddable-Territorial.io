@@ -5,16 +5,18 @@
  * ============================================================ */
 
 :root {
-  /* Default theme = Midnight */
-  --tt-accent:    #3fb950;
-  --tt-bg:        #0a0c10;
-  --tt-card:      #161b22;
-  --tt-border:    #30363d;
+  /* Default theme = Modatorial (cyan + navy + indigo + emerald) */
+  --tt-accent:    #00F5D4;
+  --tt-bg:        #0F172A;
+  --tt-card:      #1E293B;
+  --tt-border:    #0284C7;
   --tt-text:      #e6edf3;
   --tt-text-dim:  #7d8590;
   --tt-danger:    #f85149;
   --tt-warn:      #d29922;
-  --tt-accent-2:  #58a6ff;
+  --tt-accent-2:  #6366F1;
+  --tt-emerald:   #10B981;
+  --tt-mint:      #059669;
 }
 
 html[data-tt-theme="cyberpunk"] {
@@ -76,19 +78,6 @@ html[data-tt-theme="sunset"] {
  *   #10B981  Mods                      → --tt-emerald
  *   #059669  Mod Store                 → --tt-mint
  * ============================================================ */
-html[data-tt-theme="modatorial"] {
-  --tt-accent:    #00F5D4;
-  --tt-bg:        #0F172A;
-  --tt-card:      #1E293B;
-  --tt-border:    #0284C7;
-  --tt-text:      #e6edf3;
-  --tt-text-dim:  #7d8590;
-  --tt-accent-2:  #6366F1;
-  --tt-emerald:   #10B981;
-  --tt-mint:      #059669;
-  --tt-danger:    #f85149;
-  --tt-warn:      #d29922;
-}
 
 /* Per-button brand colors for the injected menu buttons */
 html[data-tt-theme="modatorial"] #tt-mods-btn {

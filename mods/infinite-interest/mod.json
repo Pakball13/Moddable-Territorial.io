@@ -1,0 +1,38 @@
+{
+  "id": "infinite-interest",
+  "name": "Infinite Interest",
+  "version": "1.0.0",
+  "author": "Modatorial",
+  "description": "Massive interest income for you. Bots scale up to match your threat level.",
+  "gameVersion": 25,
+  "main": "main.js",
+  "settings": [
+    {
+      "id": "humanMultiplier",
+      "type": "slider",
+      "label": "Your interest multiplier",
+      "description": "How much extra interest income you get (1 = normal, 1000 = ~infinite)",
+      "min": 1, "max": 5000, "step": 10, "default": 1000
+    },
+    {
+      "id": "botMultiplier",
+      "type": "slider",
+      "label": "Bot interest multiplier",
+      "description": "How much extra interest income bots get",
+      "min": 1, "max": 500, "step": 1, "default": 1
+    },
+    {
+      "id": "scaleBotsToMe",
+      "type": "toggle",
+      "label": "Scale bots to match you",
+      "description": "Bots receive the SAME multiplier as you (buffs them to your level)",
+      "default": false
+    },
+    {
+      "id": "showHud",
+      "type": "toggle",
+      "label": "Show multiplier HUD",
+      "default": true
+    }
+  ]
+}
