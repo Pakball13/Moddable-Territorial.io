@@ -1,11 +1,14 @@
 /* ============================================================
- * Client styles — main menu button overrides
+ * Client styles — Modatorial.io
+ * Patch 1.9.2 : hover + click animations
  * ============================================================ */
 
-/* Permanently hide Multiplayer when disabled by the client.
-   !important beats whatever inline display the game writes. */
+/* ============================================================
+ * HIDDEN BUTTONS (Multiplayer / filtered Game-Menu items)
+ * ============================================================ */
 body > button[data-tt-multi="1"],
-body > button[data-tt-hidden="1"] {
+body > button[data-tt-hidden="1"],
+body > button[data-tt-hid="1"] {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -15,73 +18,210 @@ body > button[data-tt-hidden="1"] {
   overflow: hidden !important;
 }
 
+/* ============================================================
+ * BASE BUTTON LOOK
+ * ============================================================ */
 body > button[data-tt-menu-btn="1"] {
   box-sizing: border-box !important;
-  transition: filter .12s ease;
+  font-family: system-ui, -apple-system, sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  color: #fff !important;
+  cursor: pointer;
+  border: 2px solid #fff !important;
+  transition:
+    transform   .28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow  .28s ease,
+    filter      .2s  ease,
+    padding     .25s ease;
+  will-change: transform, box-shadow;
+  position: fixed;
+  overflow: hidden;
+  isolation: isolate;             /* own stacking context for ::before */
 }
-body > button[data-tt-menu-btn="1"]:hover { filter: brightness(1.15); }
-body > button[data-tt-menu-btn="1"]:active { transform: scale(0.98); }
 
-#tt-chrome { font-family: system-ui, sans-serif; }
-#tt-chrome button { font-family: inherit; }
 /* ============================================================
- * Client styles — main menu button overrides
- * Loaded automatically by modLoader.js
+ * GLOW LAYER — soft white halo that appears on hover
+ * ============================================================ */
+body > button[data-tt-menu-btn="1"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--tt-mx, 50%) var(--tt-my, 50%),
+    rgba(255,255,255,0.22) 0%,
+    rgba(255,255,255,0.08) 30%,
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity .3s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body > button[data-tt-menu-btn="1"]:hover::before {
+  opacity: 1;
+}
+
+/* ============================================================
+ * SHINE SWEEP — a diagonal light streak that sweeps across
+ * ============================================================ */
+body > button[data-tt-menu-btn="1"]::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -120%;
+  width: 80%;
+  height: 200%;
+  background: linear-gradient(
+    115deg,
+    transparent 0%,
+    rgba(255,255,255,0.0) 40%,
+    rgba(255,255,255,0.28) 50%,
+    rgba(255,255,255,0.0) 60%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  transition: left .7s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+body > button[data-tt-menu-btn="1"]:hover::after {
+  left: 120%;
+}
+
+/* ============================================================
+ * HOVER — lift, glow, brighten
+ * ============================================================ */
+body > button[data-tt-menu-btn="1"]:hover {
+  transform: translateY(-3px) scale(1.025);
+  filter: brightness(1.18) saturate(1.15);
+  box-shadow:
+    0 6px 22px rgba(255,255,255,0.18),
+    0 0 40px -8px rgba(255,255,255,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.35) !important;
+}
+
+/* ============================================================
+ * ACTIVE (mousedown) — squeeze down
+ * ============================================================ */
+body > button[data-tt-menu-btn="1"]:active {
+  transform: translateY(-1px) scale(0.985);
+  transition-duration: .08s;
+  filter: brightness(1.05) saturate(1.05);
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.4),
+    inset 0 2px 6px rgba(0,0,0,0.25) !important;
+}
+
+/* ============================================================
+ * ICON — pops and rotates a touch on hover
+ * ============================================================ */
+body > button[data-tt-menu-btn="1"] .tt-btn-icon {
+  transition:
+    transform  .35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter     .2s  ease;
+  transform-origin: center;
+  z-index: 2;
+  position: relative;
+}
+
+body > button[data-tt-menu-btn="1"]:hover .tt-btn-icon {
+  transform: scale(1.22) rotate(-6deg);
+  filter: brightness(0) invert(1) drop-shadow(0 0 6px rgba(255,255,255,0.9));
+}
+
+body > button[data-tt-menu-btn="1"]:active .tt-btn-icon {
+  transform: scale(1.05) rotate(3deg);
+}
+
+/* ============================================================
+ * LABEL — slight indent + brighter
+ * ============================================================ */
+body > button[data-tt-menu-btn="1"] .tt-btn-label {
+  transition: transform .28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 2;
+  position: relative;
+}
+
+body > button[data-tt-menu-btn="1"]:hover .tt-btn-label {
+  transform: translateX(2px);
+}
+
+/* ============================================================
+ * LAYOUT-SPECIFIC ANIMATION TWEAKS
  * ============================================================ */
 
-/* Prevent the game from re-laying-out our repositioned buttons */
+/* ---- SIDEBAR (default) : slide the button right on hover ---- */
+body > button[data-tt-menu-btn="1"][data-tt-layout="sidebar"]:hover {
+  transform: translateY(-2px) translateX(6px) scale(1.015);
+  box-shadow:
+    -6px 6px 24px rgba(255,255,255,0.15),
+    0 0 40px -8px rgba(255,255,255,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.35) !important;
+}
+
+/* ---- GRID : scale from center ---- */
+body > button[data-tt-menu-btn="1"][data-tt-layout="grid"]:hover {
+  transform: translateY(-4px) scale(1.04);
+}
+
+/* ---- CIRCLES : spin the icon further, grow more ---- */
+body > button[data-tt-menu-btn="1"][data-tt-layout="circles"]:hover {
+  transform: translateY(-4px) scale(1.08);
+  box-shadow:
+    0 10px 32px rgba(255,255,255,0.2),
+    0 0 60px -8px rgba(255,255,255,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.4) !important;
+}
+body > button[data-tt-menu-btn="1"][data-tt-layout="circles"]:hover .tt-btn-icon {
+  transform: scale(1.35) rotate(-12deg);
+}
+
+/* ============================================================
+ * STAGGER — fade buttons in on first appearance
+ * ============================================================ */
+@keyframes tt-btn-in {
+  0%   { opacity: 0; transform: translateY(12px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
 body > button[data-tt-menu-btn="1"] {
-  box-sizing: border-box !important;
-  transition: filter .12s ease;
+  animation: tt-btn-in .45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-body > button[data-tt-menu-btn="1"]:hover {
-  filter: brightness(1.15);
-}
-body > button[data-tt-menu-btn="1"]:active {
-  transform: scale(0.98);
-}
-/* ---------- SVG icon buttons ---------- */
-body > button[data-tt-menu-btn="1"] .tt-btn-icon {
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  display: block;
-  filter: brightness(0) invert(1);   /* force white */
-  opacity: 0.92;
+
+body > button[data-tt-menu-btn="1"]:nth-of-type(1) { animation-delay: 0.00s; }
+body > button[data-tt-menu-btn="1"]:nth-of-type(2) { animation-delay: 0.06s; }
+body > button[data-tt-menu-btn="1"]:nth-of-type(3) { animation-delay: 0.12s; }
+body > button[data-tt-menu-btn="1"]:nth-of-type(4) { animation-delay: 0.18s; }
+body > button[data-tt-menu-btn="1"]:nth-of-type(5) { animation-delay: 0.24s; }
+
+/* ============================================================
+ * CLICK RIPPLE — spawned by JS in modLoader (adds .tt-ripple)
+ * ============================================================ */
+.tt-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.55);
+  transform: scale(0);
   pointer-events: none;
+  animation: tt-ripple-out .55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 3;
 }
-body > button[data-tt-menu-btn="1"] .tt-btn-label {
-  flex: 1;
-  pointer-events: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+@keyframes tt-ripple-out {
+  to { transform: scale(3.2); opacity: 0; }
 }
 
-/* Row layout (sidebar) — icon left, label right */
-body > button[data-tt-menu-btn="1"] {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 14px;
-  padding: 0 18px !important;
+/* ============================================================
+ * CHROME BAR BUTTONS — softer hover
+ * ============================================================ */
+#tt-chrome button {
+  transition: background .15s, transform .12s !important;
 }
-
-/* Grid / circles — center the pair */
-body > button[data-tt-menu-btn="1"][data-tt-layout="grid"],
-body > button[data-tt-menu-btn="1"][data-tt-layout="circles"] {
-  justify-content: center !important;
-  padding: 0 10px !important;
+#tt-chrome button:hover {
+  transform: translateY(-1px);
 }
-body > button[data-tt-menu-btn="1"][data-tt-layout="circles"] {
-  flex-direction: column;
-  gap: 6px;
+#tt-chrome button:active {
+  transform: translateY(0) scale(0.97);
 }
-body > button[data-tt-menu-btn="1"][data-tt-layout="circles"] .tt-btn-label {
-  flex: 0;
-  text-align: center;
-}
-
-/* Chrome bar base */
-#tt-chrome { font-family: system-ui, sans-serif; }
-#tt-chrome button { font-family: inherit; }

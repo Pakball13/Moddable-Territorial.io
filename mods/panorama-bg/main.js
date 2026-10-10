@@ -1,5 +1,5 @@
 /* ============================================================
- * Panorama Background  v0.4.0
+ * Panorama Background  v0.5.0
  * ============================================================ */
 
 let pano     = null;
@@ -11,7 +11,6 @@ let cropBand = 0.30;
 let targetX  = 0;
 let currentX = 0;
 
-/* ---------- input ---------- */
 api.addHook('mouseMove', e => { targetX = e.clientX; });
 api.addHook('mouseDown', e => { targetX = e.clientX; });
 
@@ -27,9 +26,8 @@ function makeFallbackPano(W, H) {
   g.fillStyle = sky; g.fillRect(0, 0, W, H);
   for (let i = 0; i < 500; i++) {
     const x = Math.random() * W, y = Math.random() * H * 0.65;
-    const r = Math.random() * 1.4 + 0.3;
     g.fillStyle = `rgba(255,255,255,${Math.random() * 0.7 + 0.3})`;
-    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(x, y, Math.random() * 1.4 + 0.3, 0, Math.PI * 2); g.fill();
   }
   g.fillStyle = '#0a0a12'; g.beginPath(); g.moveTo(0, H);
   for (let x = 0; x <= W; x += 10) {
@@ -54,7 +52,7 @@ async function decodeEXR(url) {
         const id = g.createImageData(width, height);
         const out = id.data;
         for (let i = 0, n = width * height; i < n; i++) {
-          let r  = data[i*4],   gg = data[i*4+1], b = data[i*4+2];
+          let r = data[i*4], gg = data[i*4+1], b = data[i*4+2];
           r  = Math.pow(r  / (1 + r),  1/2.2);
           gg = Math.pow(gg / (1 + gg), 1/2.2);
           b  = Math.pow(b  / (1 + b),  1/2.2);
@@ -75,7 +73,6 @@ async function loadPanorama() {
   pano = null; panoPath = null; panoSize = null;
   const rasters = ['assets/panorama.png','assets/panorama.jpg','assets/panorama.jpeg','assets/panorama.webp'];
   const exrs    = ['assets/panorama.exr','assets/bg.exr'];
-
   for (const p of rasters) {
     try {
       const img = await api.readModFile(mod, p, 'image');
@@ -104,12 +101,10 @@ async function loadPanorama() {
 }
 loadPanorama();
 
-/* ---------- menu detection ---------- */
 function isOnMenu() {
   return !!document.querySelector('input#input0');
 }
 
-/* ---------- draw ---------- */
 function drawPanorama(g, W, H) {
   currentX += (targetX - currentX) * 0.08;
 
@@ -132,13 +127,17 @@ function drawPanorama(g, W, H) {
   g.globalAlpha = 1;
   g.imageSmoothingEnabled = true;
   g.drawImage(pano, 0, bandY0, pano.width, bandH, -scrollX, offsetY, drawW, drawH);
-  g.fillStyle = 'rgba(0,0,0,0.30)';
+
+  // Soft radial vignette so the edges fall away — fills side gutters
+  const grad = g.createRadialGradient(W/2, H/2, H*0.15, W/2, H/2, H*0.9);
+  grad.addColorStop(0, 'rgba(0,0,0,0.10)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.60)');
+  g.fillStyle = grad;
   g.fillRect(0, 0, W, H);
+
   g.restore();
 }
 
-/* postUpdate fires AFTER the game has finished drawing the frame,
- * so this covers the entire canvas — no more black void. */
 api.addHook('postUpdate', () => {
   if (!enabled || !pano) return;
   if (!isOnMenu()) return;
@@ -147,7 +146,6 @@ api.addHook('postUpdate', () => {
   drawPanorama(c.getContext('2d'), c.width, c.height);
 });
 
-/* ---------- controls ---------- */
 mod.setEnabled = v => {
   enabled = !!v; mod.enabled = enabled;
   api.showToast(`🌄 Panorama ${enabled ? 'enabled' : 'disabled'}`);
@@ -159,4 +157,4 @@ mod.setCropBand = v => {
   api.showToast(`🌄 cropBand = ${cropBand}`);
 };
 
-api.log('🌄 Panorama Background v0.4 ready (postUpdate mode).');
+api.log('🌄 Panorama Background v0.5 ready.');
