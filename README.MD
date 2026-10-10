@@ -1,33 +1,38 @@
-# Modding Territorial.io
+# Modatorial.io — Modding Guide
 
-## Installing a mod
-1. Put the mod folder inside `mods/`.
-2. Add the folder name to `mods/manifest.json` under `"mods"`.
-3. Reload the page.
+## Installing mods
+1. Create a folder inside `mods/`, e.g. `mods/my-mod/`.
+2. Add three files:
+   - `mod.json` — metadata
+   - `main.js` — mod logic
+   - `icon.png` — optional cover
+3. Add the folder name to `mods/manifest.json`.
+4. Reload.
 
-## Mod folder contents
-- `mod.json`  – metadata (required)
-- `icon.png`  – cover image shown in the F10 menu (optional)
-- `main.js`   – the mod's JavaScript (name configurable via `main`)
-- Any other folders/files you want – read them with `api.readModFile()`.
-
-## `mod.json` fields
-| field         | type    | description                                |
-|---------------|---------|--------------------------------------------|
-| name          | string  | display name                               |
-| version       | string  | semver                                     |
-| author        | string  | your name                                  |
-| description   | string  | short blurb                                |
-| icon          | string  | path relative to the mod folder            |
-| main          | string  | path to the JS entry file (or `false`)     |
-| gameVersion   | number  | game r-version (25 for this build)         |
-| enabled       | boolean | optional – set `false` to disable the mod  |
+## mod.json
+\`\`\`json
+{
+  "name": "My Mod",
+  "version": "1.0.0",
+  "author": "You",
+  "description": "Does a thing.",
+  "main": "main.js",
+  "gameVersion": 25
+}
+\`\`\`
 
 ## The `api` object
-Everything a mod can do goes through `window.TerritorialMods`.
+- `api.on(event, fn)` / `api.emit(event, ...)`
+- `api.addHook(name, fn)` — `netSend`, `netRecv`, `preUpdate`, `postUpdate`, `preRender`, `postRender`, `keyDown`, `keyUp`, `mouseDown`, `mouseUp`, `mouseMove`
+- `api.showToast(msg)`, `api.addButton(text, onClick)`
+- `api.readModFile(mod, 'assets/foo.png', 'image')`
+- `api.setMenuBackground((ctx, w, h) => {...})` — draw behind the menu UI
 
-### Events (pub/sub)
-```js
-api.on('event', handler)     // subscribe
-api.off('event', handler)    // unsubscribe
-api.emit('event', ...args)   // emit custom events
+## Client controls (in-game console)
+\`\`\`js
+TerritorialMods.setLayout('grid' | 'list' | 'circles')
+TerritorialMods.setChrome(false)
+TerritorialMods.setHideMenuButtons(false)
+TerritorialMods.showMenuClutter()    // bring back the bottom timeline bars
+TerritorialMods.offlineMode = false  // re-enable WS connections
+\`\`\`
