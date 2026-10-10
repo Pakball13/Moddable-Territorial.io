@@ -1,0 +1,258 @@
+/* ============================================================
+ * Splash screen — Modatorial.io intro animation
+ * ============================================================ */
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ---------- panorama background ---------- */
+#pano {
+  position: absolute;
+  inset: -10%;
+  background: #050510;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  transform: scale(1.06);
+  animation: pan-drift 26s ease-in-out infinite alternate;
+}
+#pano.loaded   { opacity: 1; }
+#pano.fade-out { opacity: 0; }
+
+@keyframes pan-drift {
+  0%   { transform: scale(1.06) translateX(0); }
+  100% { transform: scale(1.06) translateX(-4%); }
+}
+
+#vig {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center,
+              transparent 35%, rgba(0,0,0,0.8) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ---------- falling / morphing letters ---------- */
+#letters {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: nowrap;              /* ← never wrap */
+  white-space: nowrap;            /* ← never wrap */
+
+  width: max-content;
+  max-width: 96vw;
+
+  font-family: 'Arial Black', 'Segoe UI Black', system-ui, sans-serif;
+  font-weight: 900;
+  font-size: min(7vw, 8.5vh);     /* ← viewport-aware, no clamping overflow */
+  letter-spacing: 0.02em;
+
+  user-select: none;
+  pointer-events: none;
+}
+
+#letters span {
+  display: inline-block;
+  white-space: nowrap;            /* ← each letter never wraps */
+  opacity: 0;
+  color: #dcdcdc;
+  will-change: transform, opacity;
+}
+
+/* ---------- logo (fades in above the letters) ---------- */
+#splash-logo {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translate(-50%, -50%) scale(0.6);
+  width: clamp(120px, 15vw, 200px);
+  height: auto;
+  opacity: 0;
+  z-index: 15;
+  pointer-events: none;
+  filter: drop-shadow(0 0 24px rgba(120, 200, 255, 0.4));
+  transition: opacity 0.7s ease, transform 0.9s cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+#splash-logo.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* ---------- final menu ---------- */
+#menu {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translate(-50%, 20px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  opacity: 0;
+  transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.34, 1.4, 0.64, 1);
+  pointer-events: none;
+}
+#menu.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+#menu button {
+  background: linear-gradient(180deg, rgba(0,110,0,0.94) 0%, rgba(0,70,0,0.94) 100%);
+  color: #fff;
+  border: 2px solid #fff;
+  padding: 15px 34px;
+  font: 600 17px system-ui;
+  letter-spacing: 0.5px;
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 240px;
+  transition: all 0.15s;
+  text-align: center;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+#menu button:hover {
+  background: linear-gradient(180deg, rgba(0,170,0,0.95) 0%, rgba(0,100,0,0.95) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,180,0,0.35), 0 0 0 1px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+#menu button.secondary {
+  background: linear-gradient(180deg, rgba(40,40,45,0.92) 0%, rgba(22,22,26,0.92) 100%);
+}
+#menu button.secondary:hover {
+  background: linear-gradient(180deg, rgba(70,70,78,0.95) 0%, rgba(40,40,48,0.95) 100%);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* ---------- flash overlay ---------- */
+#flash {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 50;
+  transition: opacity 0.2s;
+}
+
+#skip {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  font-size: 12px;
+  opacity: 0.4;
+  color: #fff;
+  z-index: 100;
+  font-family: system-ui;
+  letter-spacing: 1px;
+}
+
+/* ---------- modals (Credits / Readme) ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 40px 20px;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.modal.show { display: flex; opacity: 1; }
+
+.modal-inner {
+  background: #12151b;
+  border: 1px solid #2a2f38;
+  border-radius: 12px;
+  max-width: 720px;
+  width: 100%;
+  max-height: 82vh;
+  overflow: auto;
+  padding: 32px 40px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+  transform: translateY(12px);
+  transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.modal.show .modal-inner { transform: translateY(0); }
+
+.modal-inner h2 {
+  margin: 0 0 20px;
+  font-size: 26px;
+  border-bottom: 1px solid #2a2f38;
+  padding-bottom: 14px;
+}
+.modal-inner h3 {
+  color: #7dd;
+  margin: 22px 0 8px;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.85;
+}
+.modal-inner p,
+.modal-inner li {
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.92;
+}
+.modal-inner a { color: #7bd; }
+.modal-inner pre {
+  background: #0a0c10;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #cbd;
+  border: 1px solid #1e242e;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.modal-close {
+  float: right;
+  background: none;
+  border: 0;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.modal-close:hover { background: rgba(255,80,80,0.15); color: #f88; }
+.modal-inner ul { padding-left: 20px; }
+.modal-inner code {
+  background: #0a0c10;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}

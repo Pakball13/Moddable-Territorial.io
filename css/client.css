@@ -1,0 +1,87 @@
+/* ============================================================
+ * Client styles — main menu button overrides
+ * ============================================================ */
+
+/* Permanently hide Multiplayer when disabled by the client.
+   !important beats whatever inline display the game writes. */
+body > button[data-tt-multi="1"],
+body > button[data-tt-hidden="1"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+}
+
+body > button[data-tt-menu-btn="1"] {
+  box-sizing: border-box !important;
+  transition: filter .12s ease;
+}
+body > button[data-tt-menu-btn="1"]:hover { filter: brightness(1.15); }
+body > button[data-tt-menu-btn="1"]:active { transform: scale(0.98); }
+
+#tt-chrome { font-family: system-ui, sans-serif; }
+#tt-chrome button { font-family: inherit; }
+/* ============================================================
+ * Client styles — main menu button overrides
+ * Loaded automatically by modLoader.js
+ * ============================================================ */
+
+/* Prevent the game from re-laying-out our repositioned buttons */
+body > button[data-tt-menu-btn="1"] {
+  box-sizing: border-box !important;
+  transition: filter .12s ease;
+}
+body > button[data-tt-menu-btn="1"]:hover {
+  filter: brightness(1.15);
+}
+body > button[data-tt-menu-btn="1"]:active {
+  transform: scale(0.98);
+}
+/* ---------- SVG icon buttons ---------- */
+body > button[data-tt-menu-btn="1"] .tt-btn-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  display: block;
+  filter: brightness(0) invert(1);   /* force white */
+  opacity: 0.92;
+  pointer-events: none;
+}
+body > button[data-tt-menu-btn="1"] .tt-btn-label {
+  flex: 1;
+  pointer-events: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Row layout (sidebar) — icon left, label right */
+body > button[data-tt-menu-btn="1"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 14px;
+  padding: 0 18px !important;
+}
+
+/* Grid / circles — center the pair */
+body > button[data-tt-menu-btn="1"][data-tt-layout="grid"],
+body > button[data-tt-menu-btn="1"][data-tt-layout="circles"] {
+  justify-content: center !important;
+  padding: 0 10px !important;
+}
+body > button[data-tt-menu-btn="1"][data-tt-layout="circles"] {
+  flex-direction: column;
+  gap: 6px;
+}
+body > button[data-tt-menu-btn="1"][data-tt-layout="circles"] .tt-btn-label {
+  flex: 0;
+  text-align: center;
+}
+
+/* Chrome bar base */
+#tt-chrome { font-family: system-ui, sans-serif; }
+#tt-chrome button { font-family: inherit; }
