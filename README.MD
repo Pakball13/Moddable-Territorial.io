@@ -18,7 +18,7 @@
 
 *Play it your way. Mod it your way.*
 
-[Quick Start](#-quick-start) · [Mod Store](#-the-mod-store) · [Make a Mod](#-making-your-first-mod) · [API Reference](#-the-mod-api) · [Discord](https://discord.gg/moddatorial)
+[Quick Start](#-quick-start) · [Mod Store](#-the-mod-store) · [Make a Mod](#-making-your-first-mod) · [API Reference](#-the-mod-api) · [Discord]()
 
 </div>
 
