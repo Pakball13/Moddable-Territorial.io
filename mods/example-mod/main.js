@@ -1,8 +1,5 @@
 api.log(`[${mod.name}] main.js running`);
-
-api.addButton('👍 Example', () => api.showToast('Hello from Example Mod!'));
-
-/* Only draw to the main game canvas so we don't paint on offscreen ones */
+api.addButton('👍 Example', () => api.showToast('Hello from Roble an Pakball13! btw you can change this field to output anything even links! youtube.com/@pakball13'));
 api.addHook('postUpdate', () => {
   const c = api.getGameCanvas();
   if (!c) return;
