@@ -2,7 +2,7 @@
  * Firebase configuration — Modatorial.io
  * ============================================================ */
 window.MODATORIAL_FIREBASE = {
-  apiKey:            "AIzaSyChsQsAuk-fGuWHNLvEe2Zh1eOOrZ09LHY",
+  apiKey:            "AIzaSyCENSORED-INSERTYOUROWNDONTSTEALMINE#########",
   authDomain:        "modatorial-io.firebaseapp.com",
   projectId:         "modatorial-io",
   storageBucket:     "modatorial-io.firebasestorage.app",
