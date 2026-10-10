@@ -27,10 +27,15 @@
     'My Account':      ICON_DIR + 'key.svg',
     'Game Menu':       ICON_DIR + 'menu.svg',
     'Multiplayer':     ICON_DIR + 'swords.svg',
-    'Mods':            ICON_DIR + 'mods.svg'
+    'Mods':            ICON_DIR + 'mods.svg',
+    'Mod Store':       ICON_DIR + 'store.svg',
+    'Store':           ICON_DIR + 'store.svg',
+    'Appearance':      ICON_DIR + 'appearance.svg',
+    'Name Changer':    ICON_DIR + 'name.svg',
+    'Name':            ICON_DIR + 'name.svg'
   };
 
-  const THEMES = ['midnight', 'cyberpunk', 'forest', 'mono', 'sunset'];
+  const THEMES = ['modatorial', 'midnight', 'cyberpunk', 'forest', 'mono', 'sunset'];
   function applyTheme(name) {
     if (!THEMES.includes(name)) name = 'midnight';
     document.documentElement.setAttribute('data-tt-theme', name);
@@ -423,7 +428,7 @@
       API.showToast(`🎨 Theme: ${name}`);
       return name;
     },
-    getTheme() { return localStorage.getItem(THEME_KEY) || 'midnight'; },
+    getTheme() { return localStorage.getItem(THEME_KEY) || 'modatorial'; },
     getThemes() { return THEMES.slice(); },
 
     openSettings(id) { openSettingsFor(id); },
@@ -855,7 +860,10 @@
   function applyIcons() {
     const candidates = [...document.querySelectorAll('body > button')];
     candidates.forEach(btn => {
-      if (isOurButton(btn) && btn.id !== MODS_BTN_ID) return;
+      const isOurs = isOurButton(btn);
+      const ourId = btn.id;
+      const ourWhitelist = ['tt-mods-btn', 'tt-store-btn', 'tt-appearance-btn'];
+      if (isOurs && !ourWhitelist.includes(ourId)) return;
       if (btn.dataset.ttIconApplied === '1' && btn.querySelector('.tt-btn-icon')) return;
       let label = btn.dataset.ttLabel;
       if (!label) {
@@ -869,7 +877,13 @@
       for (const [key, path] of Object.entries(ICONS)) {
         if (label.toLowerCase().includes(key.toLowerCase())) { iconPath = path; break; }
       }
-      if (!iconPath && btn.id === MODS_BTN_ID) iconPath = ICONS['Mods'];
+      /* Fallback mapping for our injected buttons when the label
+         match above doesn't find them */
+      if (!iconPath) {
+        if (btn.id === 'tt-mods-btn')       iconPath = ICONS['Mods'];
+        else if (btn.id === 'tt-store-btn') iconPath = ICONS['Mod Store'];
+        else if (btn.id === 'tt-appearance-btn') iconPath = ICONS['Appearance'];
+      }
       if (!iconPath) return;
       btn.dataset.ttMenuBtn = '1';
       btn.dataset.ttIconApplied = '1';
@@ -1590,13 +1604,27 @@
   const MODS_BG_BASE  = 'linear-gradient(180deg,rgba(0,110,0,0.92) 0%,rgba(0,70,0,0.92) 100%)';
   const MODS_BG_HOVER = 'linear-gradient(180deg,rgba(0,160,0,0.95) 0%,rgba(0,90,0,0.95) 100%)';
 
+  /* ============================================================
+   * Modatorial palette — used for the three injected buttons
+   * ============================================================ */
+  const PALETTE = {
+    mods:       { base: 'linear-gradient(180deg,#10B981 0%,#059669 100%)',
+                  hover:'linear-gradient(180deg,#34d399 0%,#10B981 100%)',
+                  border:'#00F5D4' },
+    store:      { base: 'linear-gradient(180deg,#059669 0%,#046f53 100%)',
+                  hover:'linear-gradient(180deg,#10B981 0%,#059669 100%)',
+                  border:'#10B981' },
+    appearance: { base: 'linear-gradient(180deg,#6366F1 0%,#4a4dc9 100%)',
+                  hover:'linear-gradient(180deg,#818cf8 0%,#6366F1 100%)',
+                  border:'#00F5D4' }
+  };
+
   function injectModsButton() {
     const btns = getMainMenuButtons();
     const input = document.getElementById('input0');
     const onMainMenu = isVisible(input);
     const anyGameBtnVisible = btns.some(isVisible);
 
-    /* remove our extra buttons when not on main menu */
     if (!onMainMenu || !anyGameBtnVisible) {
       ['tt-mods-btn', 'tt-store-btn', 'tt-appearance-btn'].forEach(id => {
         const el = document.getElementById(id);
@@ -1608,7 +1636,8 @@
     if (document.getElementById('tt-mods-btn')) return;
 
     const baseFont = btns[0].style.font || '17.55px system-ui';
-    const make = (id, label, onClick) => {
+
+    const make = (id, label, onClick, palette) => {
       const b = document.createElement('button');
       b.id = id;
       b.dataset.ttOur = '1';
@@ -1616,31 +1645,84 @@
       b.type = 'button';
       b.innerHTML = label;
       Object.assign(b.style, {
-        color:'#fff', userSelect:'none', outline:'none', overflowWrap:'break-word',
-        background: MODS_BG_BASE, border:'2.2px solid #fff',
-        font: baseFont, padding:'0em 0.3em',
-        cursor:'pointer', textAlign:'center', lineHeight:'1.2'
+        color: '#fff', userSelect: 'none', outline: 'none',
+        overflowWrap: 'break-word',
+        background: palette.base,
+        border: '2.2px solid ' + palette.border,
+        font: baseFont,
+        padding: '0em 0.3em',
+        cursor: 'pointer',
+        textAlign: 'center',
+        lineHeight: '1.2'
       });
-      b.addEventListener('mouseenter', () => { b.style.background = MODS_BG_HOVER; });
-      b.addEventListener('mouseleave', () => { b.style.background = MODS_BG_BASE; });
+      b.addEventListener('mouseenter', () => { b.style.background = palette.hover; });
+      b.addEventListener('mouseleave', () => { b.style.background = palette.base; });
       b.addEventListener('click', onClick);
       document.body.appendChild(b);
       return b;
     };
 
-    make('tt-mods-btn', 'Mods', () => showMenu());
+    make('tt-mods-btn', 'Mods', () => showMenu(), PALETTE.mods);
     make('tt-store-btn', 'Mod Store', () => {
       if (window.ModStore && typeof window.ModStore.open === 'function') {
         window.ModStore.open();
       } else {
         API.showToast('⚠️ mod-store.js not loaded');
       }
-    });
+    }, PALETTE.store);
     make('tt-appearance-btn', 'Appearance', () => {
       if (window.TerritorialAppearance && typeof window.TerritorialAppearance.open === 'function') {
         window.TerritorialAppearance.open();
       } else {
         API.showToast('appearance.js not loaded');
+      }
+    }, PALETTE.appearance);
+  }
+
+  /* ============================================================
+   * Color the game's own menu buttons with the Modatorial palette
+   * ============================================================ */
+  const MENU_BTN_COLORS = {
+    'Custom Scenario': { base: 'linear-gradient(180deg,#0284C7 0%,#0369a1 100%)',
+                         hover:'linear-gradient(180deg,#0ea5e9 0%,#0284C7 100%)',
+                         border:'#00F5D4' },
+    'My Account':      { base: 'linear-gradient(180deg,#6366F1 0%,#4a4dc9 100%)',
+                         hover:'linear-gradient(180deg,#818cf8 0%,#6366F1 100%)',
+                         border:'#00F5D4' },
+    'Game Menu':       { base: 'linear-gradient(180deg,#1E293B 0%,#0F172A 100%)',
+                         hover:'linear-gradient(180deg,#334155 0%,#1E293B 100%)',
+                         border:'#0284C7' }
+  };
+
+  function colorGameMenuButtons() {
+    document.querySelectorAll('body > button').forEach(btn => {
+      if (btn.dataset.ttOur === '1') return;
+      if (btn.dataset.ttMenuBtn !== '1' && btn.dataset.ttIconApplied !== '1') return;
+
+      const label = btn.dataset.ttLabel
+        || (btn.querySelector('.tt-btn-label') && btn.querySelector('.tt-btn-label').textContent)
+        || stripEmoji(btn.textContent);
+      if (!label) return;
+
+      for (const [key, colors] of Object.entries(MENU_BTN_COLORS)) {
+        if (label.toLowerCase().includes(key.toLowerCase())) {
+          if (btn.dataset.ttColored === key) return;
+          btn.dataset.ttColored = key;
+          btn.style.setProperty('background', colors.base, 'important');
+          btn.style.setProperty('border-color', colors.border, 'important');
+          if (!btn.dataset.ttHoverBound) {
+            btn.dataset.ttHoverBound = '1';
+            btn.addEventListener('mouseenter', () => {
+              const c = MENU_BTN_COLORS[btn.dataset.ttColored];
+              if (c) btn.style.setProperty('background', c.hover, 'important');
+            });
+            btn.addEventListener('mouseleave', () => {
+              const c = MENU_BTN_COLORS[btn.dataset.ttColored];
+              if (c) btn.style.setProperty('background', c.base, 'important');
+            });
+          }
+          return;
+        }
       }
     });
   }
@@ -1709,6 +1791,7 @@
       injectModsButton();
       applyIcons();
       applyLayout();
+      colorGameMenuButtons();
       detectScreenChange();
     };
 

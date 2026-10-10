@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Game Engine · Replay</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: #000;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="canvasA" width="1280" height="720"></canvas>
+
+<!-- Block all network so the game boots silently in replay mode -->
+<script>
+(function () {
+  'use strict';
+  const RealWS = window.WebSocket;
+  window.WebSocket = function (url, protocols) {
+    /* Silently swallow every connection attempt — the game only needs
+       WebSocket for multiplayer; replay works fine without it. */
+    const self = this;
+    self.url = String(url);
+    self.readyState = 0;
+    self.bufferedAmount = 0;
+    self.binaryType = 'arraybuffer';
+    self.onopen = null;
+    self.onerror = null;
+    self.onmessage = null;
+    self.onclose = null;
+    self.send = function () {};
+    self.close = function () { self.readyState = 3; };
+    self.addEventListener = function () {};
+    self.removeEventListener = function () {};
+    self.dispatchEvent = function () { return true; };
+    self.CONNECTING = 0; self.OPEN = 1; self.CLOSING = 2; self.CLOSED = 3;
+  };
+  window.WebSocket.CONNECTING = 0;
+  window.WebSocket.OPEN = 1;
+  window.WebSocket.CLOSING = 2;
+  window.WebSocket.CLOSED = 3;
+})();
+</script>
+
+<!-- The game itself -->
+<script src="game.js"></script>
+
+</body>
+</html>

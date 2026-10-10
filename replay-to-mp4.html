@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Replay → MP4 · Modatorial.io</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="favicon.ico" type="image/x-icon">
+
+<style>
+:root {
+  --bg:        #0F172A;
+  --panel:     #1E293B;
+  --border:    #0284C7;
+  --accent:    #00F5D4;
+  --accent2:   #6366F1;
+  --emerald:   #10B981;
+  --mint:      #059669;
+  --danger:    #f85149;
+  --text:      #e6edf3;
+  --dim:       #7d8590;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  height: 100vh; width: 100vw;
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+#layout { display: flex; height: 100vh; }
+
+/* ---------- LEFT: game iframe ---------- */
+#stage {
+  flex: 1;
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+#game-wrap {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 1280px; height: 720px;
+  transform-origin: center;
+  transform: translate(-50%, -50%);
+}
+#game-frame {
+  width: 100%; height: 100%;
+  border: 0; display: block;
+  background: #000;
+}
+
+/* ---------- RIGHT: control panel ---------- */
+#panel {
+  width: 340px;
+  flex: 0 0 340px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#panel header {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 800; font-size: 15px;
+  letter-spacing: 0.3px;
+  display: flex; align-items: center; gap: 8px;
+}
+#panel header .badge {
+  font-size: 9px; padding: 2px 7px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #062a0d;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.section {
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.section h3 {
+  margin: 0 0 10px;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+  gap: 8px;
+}
+.row label {
+  color: var(--dim);
+  font-size: 12px;
+  flex: 1;
+}
+.row select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  min-width: 120px;
+  outline: none;
+  cursor: pointer;
+}
+.row select:focus { border-color: var(--accent); }
+.row input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex: 0 0 16px;
+  margin-right: 6px;
+}
+.row.checkbox {
+  justify-content: flex-start;
+}
+.row.checkbox label {
+  flex: 1;
+  color: var(--text);
+  font-size: 12px;
+}
+
+/* ---------- Speed slider ---------- */
+.speed-wrap {
+  padding: 10px 0 4px;
+}
+.speed-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.speed-head .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--dim);
+  font-weight: 700;
+}
+.speed-head .value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+  font-feature-settings: "tnum";
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: -0.5px;
+}
+.speed-head .value .x {
+  font-size: 12px;
+  opacity: 0.65;
+  margin-left: 2px;
+}
+#opt-speed {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent2) 0%, var(--accent) 100%);
+  outline: none;
+  cursor: pointer;
+  margin: 8px 0 4px;
+}
+#opt-speed::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 245, 212, 0.6);
+  transition: transform 0.1s;
+}
+#opt-speed::-webkit-slider-thumb:hover { transform: scale(1.15); }
+#opt-speed::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 245, 212, 0.6);
+}
+#opt-speed:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+#opt-speed:disabled::-webkit-slider-thumb { cursor: not-allowed; }
+#opt-speed:disabled::-moz-range-thumb { cursor: not-allowed; }
+
+.speed-presets {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.speed-presets button {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 6px;
+  font: 600 11px system-ui;
+  background: var(--bg);
+  color: var(--dim);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.12s;
+  margin-bottom: 0;
+  width: auto;
+  display: inline-block;
+}
+.speed-presets button:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.speed-presets button.active {
+  background: var(--accent);
+  color: #062a0d;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.speed-presets button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.speed-note {
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.55;
+  margin-top: 8px;
+}
+.speed-note b { color: var(--text); }
+
+.status {
+  font-size: 12px;
+  color: var(--dim);
+  line-height: 1.5;
+  min-height: 34px;
+  word-wrap: break-word;
+}
+.status.ok { color: var(--emerald); }
+.status.err { color: var(--danger); }
+
+#progress-wrap {
+  margin-top: 10px;
+  display: none;
+}
+#progress-bar {
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+#progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--mint), var(--accent));
+  transition: width 0.15s linear;
+}
+#progress-text {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--dim);
+  font-family: ui-monospace, Menlo, monospace;
+  display: flex;
+  justify-content: space-between;
+}
+
+button {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font: 600 13px system-ui;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 8px;
+  transition: filter 0.12s, transform 0.05s;
+}
+button:hover:not(:disabled) { filter: brightness(1.15); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+button.primary {
+  background: linear-gradient(180deg, var(--emerald), var(--mint));
+  color: #fff;
+  border-color: var(--accent);
+}
+button.danger {
+  background: #6a2020;
+  color: #fff;
+  border-color: #8b2d2d;
+}
+button.ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.tip {
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.65;
+}
+.tip b { color: var(--text); }
+.tip code {
+  background: var(--bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--accent);
+}
+
+.warn {
+  background: rgba(248, 81, 73, 0.12);
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--danger);
+  margin-top: 8px;
+  display: none;
+  line-height: 1.5;
+}
+
+.info {
+  background: rgba(0, 245, 212, 0.08);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+</style>
+</head>
+<body>
+
+<div id="layout">
+
+  <div id="stage">
+    <div id="game-wrap">
+      <iframe id="game-frame"
+              src="game-replay.html"
+              title="Game replay engine"
+              allow="autoplay"></iframe>
+    </div>
+  </div>
+
+  <aside id="panel">
+
+    <header>
+      🎬 Replay → MP4
+      <span class="badge">v1.1</span>
+    </header>
+
+    <!-- ============================================================
+         SPEED
+         ============================================================ -->
+    <div class="section">
+      <h3>Replay speed</h3>
+      <div class="speed-wrap">
+        <div class="speed-head">
+          <span class="label">Speed</span>
+          <span class="value"><span id="opt-speed-val">1.0</span><span class="x">×</span></span>
+        </div>
+        <input type="range" id="opt-speed" min="0.5" max="10" step="0.1" value="1">
+        <div class="speed-presets" id="speed-presets">
+          <button data-speed="0.5">0.5×</button>
+          <button data-speed="0.75">0.75×</button>
+          <button data-speed="1" class="active">1×</button>
+          <button data-speed="1.5">1.5×</button>
+          <button data-speed="2">2×</button>
+          <button data-speed="3">3×</button>
+          <button data-speed="5">5×</button>
+          <button data-speed="10">10×</button>
+        </div>
+        <div class="speed-note" id="speed-note">
+          <b>1×</b> — normal speed · real-time recording
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         OUTPUT
+         ============================================================ -->
+    <div class="section">
+      <h3>Output settings</h3>
+      <div class="row">
+        <label>Resolution</label>
+        <select id="opt-res">
+          <option value="854x480">854 × 480</option>
+          <option value="1280x720" selected>1280 × 720</option>
+          <option value="1920x1080">1920 × 1080</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Framerate</label>
+        <select id="opt-fps">
+          <option value="24">24 fps</option>
+          <option value="30" selected>30 fps</option>
+          <option value="60">60 fps</option>
+        </select>
+      </div>
+      <div class="row">
+        <label>Quality</label>
+        <select id="opt-quality">
+          <option value="low">Low (2 Mbps)</option>
+          <option value="medium" selected>Medium (5 Mbps)</option>
+          <option value="high">High (10 Mbps)</option>
+          <option value="ultra">Ultra (20 Mbps)</option>
+        </select>
+      </div>
+      <div class="row checkbox">
+        <input type="checkbox" id="opt-autostop" checked>
+        <label for="opt-autostop">Auto-stop when replay ends</label>
+      </div>
+      <div class="row checkbox">
+        <input type="checkbox" id="opt-hidechrome" checked>
+        <label for="opt-hidechrome">Hide Modatorial chrome bar</label>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         STATUS
+         ============================================================ -->
+    <div class="section">
+      <h3>Status</h3>
+      <div id="status" class="status">Loading game engine…</div>
+      <div id="progress-wrap">
+        <div id="progress-bar"><div id="progress-fill"></div></div>
+        <div id="progress-text">
+          <span id="progress-frame">0 frames</span>
+          <span id="progress-time">0.0s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         RECORDING
+         ============================================================ -->
+    <div class="section">
+      <h3>Recording</h3>
+      <button id="btn-record" class="primary">● Start Recording</button>
+      <button id="btn-stop" class="danger" disabled>■ Stop</button>
+      <button id="btn-download" class="ghost" disabled>⬇ Download MP4</button>
+      <div id="codec-warn" class="warn">
+        WebCodecs is not supported in this browser. Use <b>Chrome 94+</b> or
+        <b>Edge 94+</b> for MP4 output. Firefox/Safari may not work.
+      </div>
+    </div>
+
+    <!-- ============================================================
+         HOW TO USE
+         ============================================================ -->
+    <div class="section">
+      <h3>How to use</h3>
+      <div class="tip">
+        1. In the game (left), click <b>📜 Replay</b><br>
+        2. Paste your replay data and click <b>Launch</b><br>
+        3. Set the speed slider here (0.5× – 10×)<br>
+        4. Click <b>Start Recording</b><br>
+        5. Wait — replay runs, frames encode live<br>
+        6. Click <b>Download MP4</b> when it stops
+      </div>
+      <div class="info" id="speed-info">
+        The MP4 plays at the speed you choose. 0.5× doubles the recording
+        time; 10× finishes 10× faster.
+      </div>
+    </div>
+
+  </aside>
+
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+
+  const frame         = $('game-frame');
+  const stage         = $('stage');
+  const gameWrap      = $('game-wrap');
+  const statusEl      = $('status');
+  const progressWrap  = $('progress-wrap');
+  const progressFill  = $('progress-fill');
+  const progressFrame = $('progress-frame');
+  const progressTime  = $('progress-time');
+
+  const btnRecord   = $('btn-record');
+  const btnStop     = $('btn-stop');
+  const btnDownload = $('btn-download');
+  const codecWarn   = $('codec-warn');
+
+  const optRes        = $('opt-res');
+  const optFps        = $('opt-fps');
+  const optQuality    = $('opt-quality');
+  const optAutoStop   = $('opt-autostop');
+  const optHideChrome = $('opt-hidechrome');
+  const optSpeed      = $('opt-speed');
+  const optSpeedVal   = $('opt-speed-val');
+  const speedPresets  = $('speed-presets');
+  const speedNote     = $('speed-note');
+  const speedInfo     = $('speed-info');
+
+  /* ---------- State ---------- */
+  let gameWindow = null;
+  let gameCanvas = null;
+  let gameReady  = false;
+  let speedPatchInstalled = false;
+
+  let encoder = null;
+  let muxer   = null;
+  let target  = null;
+
+  let capturing       = false;
+  let framesEncoded   = 0;
+  let captureStartTime = 0;
+  let rafHandle       = null;
+  let lastAutoStopCheck = 0;
+  let finalBlob       = null;
+
+  /* ---------- Fit iframe to stage ---------- */
+  function fitStage() {
+    const rect = stage.getBoundingClientRect();
+    const gw = 1280, gh = 720;
+    const scale = Math.min(rect.width / gw, rect.height / gh) * 0.96;
+    gameWrap.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  }
+  window.addEventListener('resize', fitStage);
+  fitStage();
+
+  /* ---------- Status ---------- */
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  /* ---------- Speed control ---------- */
+  function currentSpeed() {
+    return parseFloat(optSpeed.value) || 1;
+  }
+
+  function updateSpeedUI() {
+    const speed = currentSpeed();
+
+    /* Label */
+    optSpeedVal.textContent = speed.toFixed(speed < 1 ? 1 : (speed % 1 === 0 ? 0 : 1));
+
+    /* Preset highlight */
+    speedPresets.querySelectorAll('button').forEach(b => {
+      const v = parseFloat(b.dataset.speed);
+      b.classList.toggle('active', Math.abs(v - speed) < 0.001);
+    });
+
+    /* Note */
+    let note;
+    if (speed < 1) {
+      note = '<b>' + speed.toFixed(1) + '×</b> — slow motion · recording takes ' +
+             (1 / speed).toFixed(1) + '× longer than normal';
+    } else if (speed === 1) {
+      note = '<b>1×</b> — normal speed · real-time recording';
+    } else if (speed < 3) {
+      note = '<b>' + speed.toFixed(1) + '×</b> — ' +
+             speed.toFixed(1) + '× fast-forward';
+    } else {
+      note = '<b>' + speed.toFixed(0) + '×</b> — very fast · ' +
+             (1 / speed * 100).toFixed(0) + '% of normal recording time';
+    }
+    speedNote.innerHTML = note;
+
+    /* Info line */
+    speedInfo.innerHTML =
+      speed < 1
+        ? 'Slow-motion output. Every game tick gets <b>more</b> frames per second in the final video.'
+        : speed > 1
+        ? 'Fast-forward output. The replay finishes in <b>' +
+          (1 / speed).toFixed(1) + '×</b> the normal time.'
+        : 'The MP4 plays at the speed you choose. 0.5× doubles the recording time; 10× finishes 10× faster.';
+  }
+
+  function applySpeedToGame() {
+    if (!gameReady || !gameWindow) return;
+    try {
+      const TT = gameWindow.__TT__;
+      if (!TT || !TT.bF) return;
+
+      const bf = TT.bF;
+      if (!bf.__ttOriginalAq) {
+        bf.__ttOriginalAq = bf.aAq.bind(bf);
+      }
+      /* Override aAq to return our chosen speed */
+      bf.aAq = function () {
+        return currentSpeed();
+      };
+      speedPatchInstalled = true;
+    } catch (e) {
+      console.warn('[ReplayMP4] speed patch failed:', e);
+    }
+  }
+
+  optSpeed.addEventListener('input', () => {
+    updateSpeedUI();
+    applySpeedToGame();
+  });
+
+  speedPresets.addEventListener('click', e => {
+    const btn = e.target.closest('button');
+    if (!btn || btn.disabled) return;
+    optSpeed.value = btn.dataset.speed;
+    updateSpeedUI();
+    applySpeedToGame();
+  });
+
+  updateSpeedUI();
+
+  /* ---------- WebCodecs feature check ---------- */
+  const hasWebCodecs =
+    typeof VideoEncoder !== 'undefined' &&
+    typeof VideoFrame   !== 'undefined';
+
+  if (!hasWebCodecs) {
+    codecWarn.style.display = 'block';
+    btnRecord.disabled = true;
+    setStatus('WebCodecs not supported in this browser.', 'err');
+  }
+
+  /* ---------- Poll for game readiness ---------- */
+  function pollForGame() {
+    try {
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument;
+      if (!win || !doc) return false;
+
+      const canvas = doc.getElementById('canvasA');
+      if (!canvas) return false;
+
+      if (!win.__TT__) return false;
+
+      gameWindow = win;
+      gameCanvas = canvas;
+      gameReady = true;
+      return true;
+    } catch (e) {
+      console.warn('[ReplayMP4] iframe access failed:', e);
+      return false;
+    }
+  }
+
+  let pollTries = 0;
+  const pollIv = setInterval(() => {
+    pollTries++;
+    if (pollForGame()) {
+      clearInterval(pollIv);
+      setStatus('Ready. Load a replay in the game, then start recording.', 'ok');
+      hideChromeIfRequested();
+      applySpeedToGame();
+      return;
+    }
+    if (pollTries > 200) {
+      clearInterval(pollIv);
+      setStatus('Game engine failed to boot. Open DevTools → Console.', 'err');
+    }
+  }, 100);
+
+  function hideChromeIfRequested() {
+    if (!optHideChrome.checked) return;
+    try {
+      const doc = frame.contentDocument;
+      ['tt-chrome', 'tt-transition', 'tt-topright-stack'].forEach(id => {
+        const el = doc.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+    } catch {}
+  }
+
+  /* ---------- Quality presets ---------- */
+  function qualityBitrate() {
+    switch (optQuality.value) {
+      case 'low':    return 2_000_000;
+      case 'medium': return 5_000_000;
+      case 'high':   return 10_000_000;
+      case 'ultra':  return 20_000_000;
+    }
+    return 5_000_000;
+  }
+  function parseRes(str) {
+    const [w, h] = str.split('x').map(Number);
+    return { width: w, height: h };
+  }
+
+  /* ---------- Pick a supported H.264 codec ---------- */
+  async function pickCodec(width, height, fps, bitrate) {
+    const candidates = [
+      'avc1.640028',
+      'avc1.64001f',
+      'avc1.4d0028',
+      'avc1.4d001f',
+      'avc1.42001f',
+    ];
+    for (const codec of candidates) {
+      try {
+        const res = await VideoEncoder.isConfigSupported({
+          codec, width, height, bitrate, framerate: fps
+        });
+        if (res && res.supported) return codec;
+      } catch {}
+    }
+    return null;
+  }
+
+  /* ---------- Load mp4-muxer from CDN ---------- */
+  async function loadMuxerLib() {
+    /* Try the ESM build first — has named exports Muxer / ArrayBufferTarget */
+    const urls = [
+      'https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/+esm',
+      'https://unpkg.com/mp4-muxer@5.2.1/build/mp4-muxer.mjs',
+    ];
+    let lastErr = null;
+    for (const url of urls) {
+      try {
+        const mod = await import(url);
+        if (mod && mod.Muxer && mod.ArrayBufferTarget) {
+          console.log('[ReplayMP4] mp4-muxer loaded from', url);
+          return mod;
+        }
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw new Error(
+      'Could not load mp4-muxer (tried 2 CDN paths): ' +
+      (lastErr ? lastErr.message : 'unknown')
+    );
+  }
+
+  /* ---------- Start recording ---------- */
+  async function startCapture() {
+    if (!gameReady || !gameCanvas) {
+      setStatus('Game is not ready yet.', 'err');
+      return;
+    }
+    if (!hasWebCodecs) {
+      setStatus('WebCodecs not available.', 'err');
+      return;
+    }
+
+    setStatus('Initializing encoder…');
+    btnRecord.disabled = true;
+    btnDownload.disabled = true;
+    optSpeed.disabled = true;
+    speedPresets.querySelectorAll('button').forEach(b => b.disabled = true);
+
+    const { width, height } = parseRes(optRes.value);
+    const fps     = parseInt(optFps.value, 10);
+    const bitrate = qualityBitrate();
+
+    const codec = await pickCodec(width, height, fps, bitrate);
+    if (!codec) {
+      setStatus('No supported H.264 codec for these settings.', 'err');
+      btnRecord.disabled = false;
+      optSpeed.disabled = false;
+      speedPresets.querySelectorAll('button').forEach(b => b.disabled = false);
+      return;
+    }
+
+    let Muxer, ArrayBufferTarget;
+    try {
+      const lib = await loadMuxerLib();
+      Muxer = lib.Muxer;
+      ArrayBufferTarget = lib.ArrayBufferTarget;
+    } catch (e) {
+      setStatus('Failed to load mp4-muxer: ' + e.message, 'err');
+      btnRecord.disabled = false;
+      optSpeed.disabled = false;
+      speedPresets.querySelectorAll('button').forEach(b => b.disabled = false);
+      return;
+    }
+
+    target = new ArrayBufferTarget();
+    muxer = new Muxer({
+      target,
+      video: { codec: 'avc', width, height },
+      fastStart: 'in-memory',
+      firstTimestampBehavior: 'offset'
+    });
+
+    encoder = new VideoEncoder({
+      output: (chunk, meta) => {
+        try { muxer.addVideoChunk(chunk, meta); }
+        catch (e) { console.error('[ReplayMP4] mux error:', e); }
+      },
+      error: e => {
+        console.error('[ReplayMP4] encoder error:', e);
+        setStatus('Encoder error: ' + e.message, 'err');
+      }
+    });
+
+    encoder.configure({
+      codec,
+      width,
+      height,
+      bitrate,
+      framerate: fps,
+      latencyMode: 'quality'
+    });
+
+    /* Make sure the game uses our current speed */
+    applySpeedToGame();
+
+    /* Offscreen canvas at target resolution */
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = width;
+    offscreen.height = height;
+    const offctx = offscreen.getContext('2d', { alpha: false });
+
+    /* Reset */
+    framesEncoded = 0;
+    capturing = true;
+    captureStartTime = performance.now();
+    finalBlob = null;
+
+    btnStop.disabled = false;
+    progressWrap.style.display = 'block';
+    updateProgressDisplay(fps);
+
+    const frameDurationUs = 1e6 / fps;
+    let nextCaptureTime = performance.now();
+    let lastUiUpdate = 0;
+
+    function tick() {
+      if (!capturing) return;
+      const now = performance.now();
+
+      if (now >= nextCaptureTime) {
+        try {
+          offctx.drawImage(gameCanvas, 0, 0, width, height);
+
+          const timestamp = Math.round(framesEncoded * frameDurationUs);
+          const vf = new VideoFrame(offscreen, { timestamp });
+
+          const keyFrame = framesEncoded % (fps * 2) === 0;
+          encoder.encode(vf, { keyFrame });
+          vf.close();
+
+          framesEncoded++;
+        } catch (e) {
+          console.error('[ReplayMP4] capture error:', e);
+        }
+
+        nextCaptureTime += 1000 / fps;
+        if (now - nextCaptureTime > 1000) nextCaptureTime = now;
+
+        if (now - lastUiUpdate > 100) {
+          lastUiUpdate = now;
+          updateProgressDisplay(fps);
+        }
+      }
+
+      /* Auto-stop on replay end */
+      if (optAutoStop.checked && now - lastAutoStopCheck > 300) {
+        lastAutoStopCheck = now;
+        try {
+          const TT = gameWindow.__TT__;
+          if (TT && TT.aE && TT.aE.a2G !== 1 && framesEncoded > 30) {
+            stopCapture();
+            return;
+          }
+        } catch {}
+      }
+
+      rafHandle = requestAnimationFrame(tick);
+    }
+
+    setStatus('Recording at ' + currentSpeed().toFixed(1) + '× speed…', 'ok');
+    rafHandle = requestAnimationFrame(tick);
+  }
+
+  function updateProgressDisplay(fps) {
+    const elapsed = (performance.now() - captureStartTime) / 1000;
+    const videoSec = framesEncoded / fps;
+    progressFrame.textContent = framesEncoded + ' frames';
+    progressTime.textContent  = videoSec.toFixed(1) + 's video · ' +
+                                elapsed.toFixed(1) + 's real';
+    progressFill.style.width = Math.min(100, (videoSec / 90) * 100) + '%';
+  }
+
+  /* ---------- Stop recording ---------- */
+  async function stopCapture() {
+    if (!capturing) return;
+    capturing = false;
+    if (rafHandle) { cancelAnimationFrame(rafHandle); rafHandle = null; }
+
+    btnStop.disabled = true;
+    setStatus('Finalizing video…');
+
+    try {
+      await encoder.flush();
+      muxer.finalize();
+      const buffer = target.buffer;
+      finalBlob = new Blob([buffer], { type: 'video/mp4' });
+      const sizeMb = (finalBlob.size / 1024 / 1024).toFixed(2);
+      setStatus(
+        'Done! ' + framesEncoded + ' frames · ' + sizeMb +
+        ' MB MP4 @ ' + currentSpeed().toFixed(1) + '× speed. Click Download.',
+        'ok'
+      );
+      btnDownload.disabled = false;
+    } catch (e) {
+      console.error('[ReplayMP4] finalize error:', e);
+      setStatus('Finalize failed: ' + e.message, 'err');
+    }
+
+    encoder = null;
+    muxer = null;
+    target = null;
+    btnRecord.disabled = false;
+    optSpeed.disabled = false;
+    speedPresets.querySelectorAll('button').forEach(b => b.disabled = false);
+  }
+
+  /* ---------- Download ---------- */
+  function downloadBlob() {
+    if (!finalBlob) return;
+    const url = URL.createObjectURL(finalBlob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = 'modatorial-replay-' + ts + '.mp4';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    setStatus('Downloaded ' + a.download, 'ok');
+  }
+
+  /* ---------- Wire up ---------- */
+  btnRecord.addEventListener('click', startCapture);
+  btnStop.addEventListener('click', stopCapture);
+  btnDownload.addEventListener('click', downloadBlob);
+  optHideChrome.addEventListener('change', hideChromeIfRequested);
+
+  /* Reinstall speed patch whenever the game re-inits (new replay launched) */
+  setInterval(() => {
+    if (gameReady && gameWindow) {
+      try {
+        const TT = gameWindow.__TT__;
+        if (TT && TT.bF && !TT.bF.__ttOriginalAq) {
+          applySpeedToGame();
+        }
+      } catch {}
+    }
+  }, 1000);
+
+  window.addEventListener('beforeunload', () => {
+    if (encoder) { try { encoder.close(); } catch {} }
+  });
+
+  console.log('%c[ReplayMP4]', 'color:#00F5D4;font-weight:bold',
+              'v1.1 loaded · WebCodecs:', hasWebCodecs);
+})();
+</script>
+
+</body>
+</html>

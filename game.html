@@ -120,7 +120,8 @@
   }
 
   console.log('[Auth] Signed in as', user.displayName || user.email || user.uid);
-  document.getElementById('tt-auth-veil').classList.add('hidden');
+  const veil = document.getElementById('tt-auth-veil');
+  if (veil) veil.classList.add('hidden');
 })();
 </script>
 

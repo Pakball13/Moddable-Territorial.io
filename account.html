@@ -345,6 +345,247 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="auth.js"></script>
+<script src="version-hider.js"></script>
+<script>
+(async () => {
+  'use strict';
+
+  /* ============================================================
+   * 1. Resolve current user & pick a per-account storage key
+   * ============================================================ */
+  const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  const skip = isLocal && new URLSearchParams(location.search).has('skipauth');
+
+  function waitForAuth(ms) {
+    return new Promise(resolve => {
+      if (window.Auth && window.Auth.ready) return resolve(window.Auth.current());
+      const start = Date.now();
+      const iv = setInterval(() => {
+        if (window.Auth && window.Auth.ready) {
+          clearInterval(iv); resolve(window.Auth.current());
+        } else if (Date.now() - start > (ms || 7000)) {
+          clearInterval(iv); resolve(null);
+        }
+      }, 80);
+    });
+  }
+
+  let user = null;
+  if (!skip) {
+    user = await waitForAuth();
+    if (!user) {
+      try { sessionStorage.setItem('tt-auth-return', 'account.html'); } catch {}
+      location.replace('login.html?next=' + encodeURIComponent('account.html'));
+      return;
+    }
+  }
+
+  /* Per-account key — 'guest' when signed out or in dev mode */
+  const KEY = 'tt-account-v1-' + (user ? user.uid : 'guest');
+  console.log('[Account] Using stats key:', KEY);
+
+  /* ============================================================
+   * 2. Load state for THIS account
+   * ============================================================ */
+  const defaultState = () => ({
+    gamesPlayed: 0, wins: 0, losses: 0, surrenders: 0,
+    playtimeMs: 0, xp: 0, lastMods: [], usernames: [],
+    history: [], firstSeen: Date.now(), lastSeen: Date.now()
+  });
+
+  let state = defaultState();
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) state = Object.assign(defaultState(), JSON.parse(raw));
+  } catch (e) { console.warn('Could not load account state:', e); }
+
+  /* ---------- level curve ---------- */
+  const xpForLevel = lvl => 50 * lvl * lvl + 50 * lvl;
+  function levelFromXp(xp) { let l = 0; while (xp >= xpForLevel(l + 1)) l++; return l; }
+  function xpProgress(xp) {
+    const lvl  = levelFromXp(xp);
+    const cur  = xpForLevel(lvl);
+    const next = xpForLevel(lvl + 1);
+    return { level: lvl, cur, next, need: next - cur, have: xp - cur };
+  }
+
+  /* ---------- time ---------- */
+  function fmtTime(ms) {
+    const s = Math.floor(ms / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s % 60}s`;
+    return `${s}s`;
+  }
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    const pad = n => (n < 10 ? '0' : '') + n;
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+
+  /* ---------- chart ---------- */
+  function drawChart() {
+    const canvas = document.getElementById('chart');
+    const g = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    g.clearRect(0, 0, W, H);
+
+    const values = [state.wins, state.losses, state.surrenders];
+    const labels = ['Wins', 'Losses', 'Surrenders'];
+    const colors = ['#00F5D4', '#f85149', '#d29922'];
+    const max = Math.max(1, ...values);
+
+    const padL = 44, padR = 16, padT = 16, padB = 40;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+    const barW = chartW / values.length;
+    const gap = barW * 0.25;
+
+    g.strokeStyle = 'rgba(255,255,255,0.06)';
+    g.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = padT + (chartH * i / 4);
+      g.beginPath(); g.moveTo(padL, y); g.lineTo(W - padR, y); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.35)';
+      g.font = '11px system-ui'; g.textAlign = 'right'; g.textBaseline = 'middle';
+      g.fillText(String(Math.round(max - max * i / 4)), padL - 8, y);
+    }
+
+    values.forEach((v, i) => {
+      const x = padL + i * barW + gap / 2;
+      const h = (v / max) * chartH;
+      const y = padT + chartH - h;
+      g.fillStyle = colors[i];
+      g.fillRect(x, y, barW - gap, h);
+      if (v > 0) {
+        g.fillStyle = '#fff'; g.font = '600 12px system-ui';
+        g.textAlign = 'center'; g.textBaseline = 'bottom';
+        g.fillText(String(v), x + (barW - gap) / 2, y - 4);
+      }
+      g.fillStyle = 'rgba(255,255,255,0.7)';
+      g.font = '12px system-ui'; g.textAlign = 'center'; g.textBaseline = 'top';
+      g.fillText(labels[i], x + (barW - gap) / 2, padT + chartH + 8);
+    });
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    const p = xpProgress(state.xp);
+    document.getElementById('lvl-num').textContent = p.level;
+    document.getElementById('lvl-label').textContent = `Level ${p.level} · ${state.xp} XP total`;
+    document.getElementById('lvl-need').textContent =
+      `${p.have} / ${p.need} XP to level ${p.level + 1}`;
+    const pct = p.need ? Math.min(100, Math.round(100 * p.have / p.need)) : 0;
+    document.getElementById('xp-fill').style.width = pct + '%';
+
+    document.getElementById('s-games').textContent     = state.gamesPlayed;
+    document.getElementById('s-wins').textContent      = state.wins;
+    document.getElementById('s-losses').textContent    = state.losses;
+    document.getElementById('s-surrender').textContent = state.surrenders;
+    document.getElementById('s-wr').textContent =
+      state.gamesPlayed > 0 ? Math.round(100 * state.wins / state.gamesPlayed) + '%' : '—';
+
+    document.getElementById('s-total').textContent = fmtTime(state.playtimeMs);
+    const avg = state.gamesPlayed > 0 ? state.playtimeMs / state.gamesPlayed : 0;
+    document.getElementById('s-avg').textContent = fmtTime(avg);
+    document.getElementById('s-hours').textContent = Math.floor(state.playtimeMs / 3600000) + 'h';
+
+    // last mods
+    const lastMods = document.getElementById('last-mods');
+    lastMods.innerHTML = '';
+    if (state.lastMods && state.lastMods.length) {
+      state.lastMods.forEach(name => {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.textContent = name;
+        lastMods.appendChild(chip);
+      });
+    } else {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'Play a match with mods enabled to see them here.';
+      lastMods.appendChild(e);
+    }
+
+    // usernames
+    const users = document.getElementById('usernames');
+    users.innerHTML = '';
+    if (state.usernames && state.usernames.length) {
+      [...state.usernames].reverse().forEach((u, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'chip' + (i === 0 ? ' current' : '');
+        chip.textContent = u;
+        users.appendChild(chip);
+      });
+    } else {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'Type a username and play a match.';
+      users.appendChild(e);
+    }
+
+    // history
+    const hist = document.getElementById('history');
+    hist.innerHTML = '';
+    if (state.history && state.history.length) {
+      state.history.slice(0, 20).forEach(h => {
+        const row = document.createElement('div');
+        row.className = 'hist-item';
+        const icon = h.outcome === 'win' ? '🏆'
+                   : h.outcome === 'surrender' ? '🏳️'
+                   : h.outcome === 'loss' ? '💀'
+                   : '❔';
+        row.innerHTML =
+          `<div class="hist-icon">${icon}</div>
+           <div class="hist-date">${esc(fmtDate(h.ts))}</div>
+           <div class="hist-dur">${esc(fmtTime(h.durationMs || 0))}</div>
+           <div class="hist-result ${h.outcome}">${esc(h.outcome || 'unknown')}</div>`;
+        hist.appendChild(row);
+      });
+    } else {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = 'No matches recorded yet.';
+      hist.appendChild(e);
+    }
+
+    drawChart();
+  }
+
+  /* ---------- actions ---------- */
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    if (!confirm('Reset stats for THIS account only?\n\nThis cannot be undone.')) return;
+    state = defaultState();
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+    render();
+  });
+
+  document.getElementById('btn-close').addEventListener('click', () => {
+    let dest = 'game.html';
+    try {
+      const back = sessionStorage.getItem('tt-account-return');
+      if (back) dest = back;
+    } catch {}
+    location.href = dest;
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('btn-close').click();
+  });
+
+  window.addEventListener('storage', e => {
+    if (e.key === KEY) {
+      try { state = Object.assign(defaultState(), JSON.parse(e.newValue || '{}')); render(); }
+      catch {}
+    }
+  });
+
+  render();
+  document.getElementById('tt-auth-veil')?.classList.add('hidden');
+})();
+</script>
 
 <script>
 (async () => {

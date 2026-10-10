@@ -1,0 +1,915 @@
+================================================================================
+MODATORIAL.IO — PROJECT PROGRESS & CONTEXT FILE
+Last updated: 2026-10-10
+Purpose: Paste this whole file into a fresh AI chat to instantly bring a new
+         assistant up to speed on this project.
+================================================================================
+
+--------------------------------------------------------------------------------
+SECTION 1 — WHAT THIS PROJECT IS
+--------------------------------------------------------------------------------
+
+Modatorial.io is a CLIENT-SIDE modding platform for the browser game
+territorial.io (created by David Tschacher, davidschacher@gmail.com).
+
+The platform does NOT modify the original game. Instead, it monkey-patches
+browser APIs (WebSocket, requestAnimationFrame, CanvasRenderingContext2D,
+DOM events) BEFORE the game loads, and exposes a stable API for mods.
+
+Users can:
+  - Install mods from a Firebase-backed community store
+  - Write their own mods as .ttmod bundles
+  - Sign in with email/Google/GitHub
+  - Track stats, XP, and levels per account
+  - Earn "Moddables" (in-game currency)
+  - Redeem promo codes for upload slots
+  - Switch between 6 themes
+
+Live deployment target: https://modatorial.netlify.app
+Local dev URL: http://127.0.0.1:5500 (VS Code Live Server) or http://localhost:8000
+
+--------------------------------------------------------------------------------
+SECTION 2 — TEAM / CREDITS
+--------------------------------------------------------------------------------
+
+  Pakball13    — Founder · Lead Developer
+  Roble Code   — Bug Hunter · Contributor  (this is the user of this chat)
+  ModderBoii   — Logo & SVG icons
+
+--------------------------------------------------------------------------------
+SECTION 3 — TECH STACK
+--------------------------------------------------------------------------------
+
+Frontend:     Vanilla HTML/CSS/JS (no build step, no framework)
+Firebase:     Auth (compat + modular), Firestore (compat + modular)
+Hosting:      Netlify (deployed) / Live Server (local)
+Browser APIs: WebSocket proxy, rAF proxy, Canvas2D proxy, DOM events
+Mods format:  .ttmod files (<ttmod>JSON</ttmod> + <script>...</script>)
+
+--------------------------------------------------------------------------------
+SECTION 4 — FILE STRUCTURE
+--------------------------------------------------------------------------------
+
+Root HTML pages:
+  index.html            Splash screen + main menu
+  game.html             The actual game (loads modLoader + game.js)
+  login.html            Email/password + Google + GitHub sign-in
+  signup.html           Email/password signup with username reservation
+  account.html          Per-user stats, profile, phone attach, sign-out
+  mod-store.html        Standalone fullscreen mod store page
+  modding-guide.html    Full modder documentation (separate guide)
+
+Auth + Config:
+  firebase-config.js    Firebase API keys (public — safe to commit)
+  auth.js               Compat-SDK wrapper, exposes window.Auth
+  version-hider.js      Hides game version string via fillText hook
+
+Mod system:
+  modLoader.js          THE core loader (1400+ lines) — patches browser APIs
+  ttmod-translator.js   Parses .ttmod files → JS code
+  ttmod-maker.js        Visual editor for creating .ttmod files
+  mod-store.js          Firebase-backed store (modal + inline modes)
+  store-plus.js         Modrinth-style UI overlay for the store
+  promo-codes.js        Redeemable codes for upload slots
+  moddables.js          In-game currency system
+
+Client features:
+  client-features.js    Chrome bar, themes, achievements, speedrun, accounts
+  appearance.js         Appearance settings modal (theme + layout picker)
+  sounds.js             Web Audio synth SFX (no asset files)
+  account.js            Match stats tracker (per-account localStorage)
+
+Styles:
+  css/themes.css        6 theme presets via --tt-* CSS vars
+  css/client.css        Menu button animations, ripples, glow effects
+  css/splash.css        Intro animation styles
+
+Assets:
+  favicon.ico
+  assets/logo.png
+  assets/panorama.png
+  assets/icons/*.svg    (swords, key, menu, mods, store, appearance, user)
+
+Mods folder:
+  mods/manifest.json    List of enabled folder mods
+  mods/example-mod/     Sample mod
+  mods/simple-name-bots/
+  mods/panorama-bg/
+  mods/ttmods/manifest.json
+  mods/ttmods/*.ttmod   Bundle mods loaded at boot
+
+--------------------------------------------------------------------------------
+SECTION 5 — THE MOD LOADER (modLoader.js) — HOW IT WORKS
+--------------------------------------------------------------------------------
+
+The loader runs BEFORE game.js on game.html. It:
+
+1. Sets up global error suppression:
+     window.addEventListener('error', ..., true)
+   Blocks the game's own error dialog from popping.
+
+2. Proxies WebSocket:
+     Replaces window.WebSocket with a wrapper class.
+     For each ws.send() call, fires the 'netSend' hook.
+     For each ws.onmessage, fires the 'netRecv' hook.
+   Blocked hosts (territorial.io, 1.territorial.io, 2.territorial.io)
+   return a fake WebSocket in offline mode.
+
+3. Proxies requestAnimationFrame:
+     Runs 'preUpdate' hooks before each frame,
+     'postUpdate' hooks after.
+
+4. Proxies CanvasRenderingContext2D:
+     Hooks drawImage → fires 'preRender' and 'postRender'.
+     Hooks fillText → hides text matching /^\d{1,2}\s+\w{3,}\s+\d{4}\s*\[/
+     (i.e. the game version string like "25 Sep 2026 [2.16.54]").
+
+5. Forwards DOM events:
+     keydown → 'keyDown' hook + 'keydown' event
+     keyup → 'keyUp' hook + 'keyup' event
+     mousedown / mouseup / mousemove → matching hooks
+
+6. Loads mods:
+     Reads mods/manifest.json → array of folder names.
+     For each, loads mod.json + main.js inside a Function wrapper.
+     main.js receives (api, mod) — api is window.TerritorialMods.
+
+7. Also loads .ttmod bundles:
+     Scans mods/ttmods/manifest.json for .ttmod files.
+     Each is translated via ttmod-translator.js, then executed.
+
+8. Manages state:
+     Disabled mods list → localStorage 'tt-disabled-mods'
+     Layout (sidebar/grid/circles) → localStorage 'tt-layout'
+     Theme → localStorage 'tt-theme'
+     Sidebar collapsed → localStorage 'tt-sidebar-collapsed'
+
+9. Injects UI:
+     Chrome bar (top strip with brand, layout, theme, store, mods, mute)
+     Mod menu (F10)
+     Store button (F8)
+     Mods button, Store button, Appearance button in the main menu
+     Layout system for these three buttons (sidebar / grid / circles)
+
+10. Hides game clutter:
+     Timeline bars (aU.wr)
+     Contest countdown (aP.wr)
+     Clan bar (matched by DOM shape)
+     Store icons (bb.gM array)
+     Menu logo (ac.aIh returns blank canvas)
+     Version text (fillText hook)
+
+--------------------------------------------------------------------------------
+SECTION 6 — THE API (window.TerritorialMods)
+--------------------------------------------------------------------------------
+
+Public properties:
+  version         string  — "1.10.2"
+  gameVersion     number  — 25 (game r25)
+  mods            Map     — id → meta for all loaded mods
+  offlineMode     bool    — true (blocks network)
+
+Public methods:
+  getGame()                    → window.__TT__
+  on(evt, fn)                  → unsubscribe fn
+  off(evt, fn)                 → void
+  emit(evt, ...args)           → void
+  addHook(name, fn)            → void
+  log/warn/error(...)          → void
+
+  getGameCanvas()              → <canvas id="canvasA">
+  getGameContext()             → 2D context
+  getGameSize()                → {width, height}
+  isInLobby()                  → boolean
+  isVisible(el)                → boolean
+
+  showToast(msg, ms)           → bottom toast
+  addButton(text, onClick)     → button in top-right stack
+  addToTopRight(el, slot)      → void
+  getTopRightStack(slot)       → DOM element
+
+  readModFile(mod, path, as)   → Promise (text/json/blob/image)
+
+  isModDisabled(id)            → boolean
+  setModDisabled(id, bool)     → void
+  toggleMod(id)                → void
+  disableAllMods()             → void
+  enableAllMods()              → void
+  resetModState()              → void (reloads page)
+  reloadPage()                 → void
+
+  setSidebarCollapsed(bool)    → void
+  toggleSidebar()              → void
+  getSidebarCollapsed()        → bool
+
+  setTheme(name)               → void
+  getTheme()                   → string (default: 'modatorial')
+  getThemes()                  → array
+
+  setLayout(mode)              → void (sidebar|grid|circles)
+  getLayout()                  → string
+
+  setChrome(on)                → void
+  setHideMenuButtons(on)       → void
+  setHideLogo(on)              → void
+  setHideVersion(on)           → void
+  setHideMultiplayer(on)       → void
+  getClient()                  → object with all client flags
+
+  openSettings(id)             → void (opens mod settings modal)
+  getSetting(modId, key)       → any
+  setSetting(modId, key, val)  → void
+
+  importTtmodFile(file, silent) → Promise
+  importTtmodBundle(bundle)     → Promise
+  exportTtmodBundle(id)         → void
+  exportModAsTtmod(id)          → Promise
+
+Hooks (register with addHook):
+  preUpdate(t)                 — before each rAF
+  postUpdate(t)                — after each rAF
+  preRender(ctx)               — before each drawImage
+  postRender(ctx)              — after each drawImage
+  netSend(data, ws, url)       — before ws.send
+  netRecv(data, ws, url)       — after ws message
+  keyDown(e)                   — any key pressed
+  keyUp(e)                     — any key released
+  mouseDown(e)                 — mouse down
+  mouseUp(e)                   — mouse up
+  mouseMove(e)                 — mouse move
+
+Events (register with on):
+  ready                        — all mods loaded
+  modLoaded(meta)              — one mod finished loading
+  modsLoaded(list)             — all mods loaded
+  modToggled(id, disabled)     — mod enabled/disabled
+  screenChanged('menu'|'game') — game state changed
+  modSettingsChanged(id, k, v) — a setting was changed
+  modSettingsAction(id, k)     — a settings "button" was clicked
+
+--------------------------------------------------------------------------------
+SECTION 7 — MOD FORMAT (.ttmod v3)
+--------------------------------------------------------------------------------
+
+A .ttmod file looks like this:
+
+  <ttmod>
+  {
+    "id": "my-mod",
+    "name": "My Mod",
+    "version": "1.0.0",
+    "author": "You",
+    "description": "Does something",
+    "gameVersion": 25,
+    "config": {
+      "userName": "CoolPlayer",
+      "userColor": "#00ff88",
+      "theme": { "accent": "#00ff88", "background": "#0a0a1a" },
+      "layout": "sidebar",
+      "hideMultiplayer": true,
+      "hideVersion": true,
+      "showFps": true,
+      "showClock": true,
+      "panorama": "panorama.png",
+      "panoramaSpeed": 0.00005,
+      "watermark": "Made by You",
+      "watermarkPosition": "bottom-right",
+      "buttons": [
+        { "label": "Discord", "url": "https://discord.gg/..." },
+        { "label": "Hello", "toast": "Hi!" }
+      ],
+      "flags": ["🇵🇰", "🔥"],
+      "confirmExit": true,
+      "customCss": "body { color: red; }"
+    },
+    "assets": {
+      "panorama.png": "data:image/png;base64,...",
+      "icon.png": "data:image/png;base64,...",
+      "music.mp3": "data:audio/mpeg;base64,..."
+    }
+  }
+  </ttmod>
+  <script>
+  // Optional raw JS — runs with full api.* access
+  api.log('My mod loaded');
+  </script>
+
+The translator (ttmod-translator.js) parses this and emits the equivalent
+JS using api.addHook / api.setTheme / api.addButton etc.
+
+If a .ttmod has ONLY a <script> block and no config, the script runs as-is.
+
+--------------------------------------------------------------------------------
+SECTION 8 — AUTH SYSTEM
+--------------------------------------------------------------------------------
+
+Two Firebase SDKs are loaded in parallel:
+  - Compat SDK:  firebase-app-compat.js + firebase-auth-compat.js + firebase-firestore-compat.js
+                 Used by auth.js (exposes window.Auth)
+  - Modular SDK: imported dynamically in mod-store.js via import()
+                 Reuses the compat-initialized app (doesn't duplicate)
+
+Firebase project: modatorial-io
+Auth domain:      modatorial-io.firebaseapp.com
+Authorized domains (must be set in Firebase Console):
+  localhost
+  127.0.0.1
+  modatorial.netlify.app
+  modatorial-io.firebaseapp.com
+
+Enabled sign-in methods (must be enabled in Firebase Console):
+  ✅ Email/Password
+  ✅ GitHub (Client ID: Ov23liOQUunI8J8Jdwv8)
+  ⚠️ Google (should be enabled too)
+  ⚠️ Phone (uses invisible reCAPTCHA)
+
+auth.js exposes window.Auth:
+  Auth.ready              → boolean, true once SDK is attached
+  Auth.current()          → user object or null
+  Auth.onChange(fn)       → subscribe to auth changes
+  Auth.login(email, pw)   → Promise<user>
+  Auth.signup(email, pw, username, displayName) → Promise<profile>
+  Auth.logout()           → Promise
+  Auth.resetPassword(email) → Promise
+  Auth.profile(uid)       → Promise<profile>
+  Auth.profileByUsername(u) → Promise<profile>
+  Auth.setPhone(phone)    → Promise
+  Auth.updateProfile(fields) → Promise
+  Auth.openUI()           → opens modal
+
+Auth gate on game.html, index.html, account.html, mod-store.html:
+  - On localhost, ?skipauth bypasses the gate
+  - Otherwise redirects to login.html?next=<returnUrl>
+  - After login, login.html reads ?next= and redirects back
+
+Sign-out flow:
+  - Account page has a "Sign Out" button → Auth.logout() → login.html
+
+--------------------------------------------------------------------------------
+SECTION 9 — FIRESTORE SCHEMA
+--------------------------------------------------------------------------------
+
+Collections:
+
+  /users/{uid}
+    uid: string
+    email: string (lowercase)
+    username: string (lowercase)
+    usernameDisplay: string
+    displayName: string
+    photoURL: string | null
+    phone: string | null
+    bio: string
+    createdAt: Timestamp
+    updatedAt: Timestamp
+
+  /usernames/{username}    ← username reservation registry
+    uid: string
+    username: string (lowercase)
+    createdAt: Timestamp
+
+  /mods/{modId}            ← community mod store
+    name: string (1-60 chars)
+    author: string (1-40 chars)
+    authorUid: string (OPTIONAL — set when published signed-in)
+    description: string (0-500 chars)
+    version: string (semver)
+    icon: string | null (data URL)
+    ttmod: string (the raw .ttmod text)
+    tags: string[]
+    downloads: number
+    createdAt: Timestamp
+
+  /profiles/{uid}          ← LEGACY, unused (locked down)
+
+--------------------------------------------------------------------------------
+SECTION 10 — FIRESTORE RULES (current, deployed)
+--------------------------------------------------------------------------------
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isSelf(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    match /mods/{modId} {
+      allow read: if true;
+      allow create: if
+        isSignedIn() &&
+        request.resource.data.authorUid == request.auth.uid &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() < 60 &&
+        request.resource.data.author is string &&
+        request.resource.data.author.size() < 40 &&
+        request.resource.data.ttmod is string &&
+        request.resource.data.ttmod.size() > 0 &&
+        request.resource.data.ttmod.size() < 800000 &&
+        request.resource.data.downloads == 0;
+      allow update: if
+        (isSignedIn() && request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly(['downloads']))
+        ||
+        (isSelf(resource.data.authorUid) &&
+         request.resource.data.diff(resource.data)
+          .affectedKeys().hasOnly(['name','description','version','icon','tags','changelog']));
+      allow delete: if isSelf(resource.data.authorUid);
+    }
+
+    match /users/{uid} {
+      allow read: if true;
+      allow create, update: if isSelf(uid);
+      allow delete: if false;
+    }
+
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if
+        isSignedIn() &&
+        request.resource.data.uid == request.auth.uid &&
+        username == username.lower() &&
+        username.size() >= 3 &&
+        username.size() <= 24 &&
+        username.matches('^[a-z0-9_.\\-]+$');
+      allow update, delete: if false;
+    }
+
+    match /profiles/{uid} {
+      allow read: if isSelf(uid);
+      allow write: if isSelf(uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+NOTE: The current mod-store.js does NOT write authorUid on publish (only
+the "patched" version does). If you're using the minimal-patch mod-store.js,
+delete the two authorUid lines from the /mods create rule and change
+delete to `false`.
+
+--------------------------------------------------------------------------------
+SECTION 11 — GITHUB OAUTH SETUP
+--------------------------------------------------------------------------------
+
+GitHub OAuth App:
+  Application name: Modatorial.io
+  Homepage URL:     https://modatorial.netlify.app
+  Callback URL:     https://modatorial-io.firebaseapp.com/__/auth/handler
+                    (copy the EXACT URL Firebase shows in the GitHub provider
+                     enable dialog)
+
+  Client ID:        Ov23liOQUunI8J8Jdwv8
+  Client Secret:    (generated on GitHub, pasted into Firebase)
+
+Firebase Console → Authentication → Sign-in method → GitHub → Enable:
+  Paste Client ID + Client Secret → Save
+
+--------------------------------------------------------------------------------
+SECTION 12 — THE PALETTE (Modatorial theme)
+--------------------------------------------------------------------------------
+
+The user's chosen color palette:
+
+  Element                Hex         Role
+  ────────────────────────────────────────────────────────
+  Username Input         #0F172A     Deep Charcoal Navy  → --tt-bg
+  Red Bar (Primary)      #00F5D4     Electric Cyan Neon  → --tt-accent
+  Custom Scenario        #0284C7     Vibrant Slate Blue  → --tt-border
+  My Account             #6366F1     Soft Indigo Accent  → --tt-accent-2
+  Game Menu              #1E293B     Dark Slate Neutral  → --tt-card
+  Mods                   #10B981     Neon Emerald        → --tt-emerald
+  Mod Store              #059669     Deep Cyber Mint     → --tt-mint
+
+Default theme is 'modatorial'. Other themes: midnight, cyberpunk, forest,
+mono, sunset, ocean.
+
+The three injected buttons use specific gradients:
+  Mods       → linear-gradient(180deg, #10B981 0%, #059669 100%)
+  Mod Store  → linear-gradient(180deg, #059669 0%, #046f53 100%)
+  Appearance → linear-gradient(180deg, #6366F1 0%, #4a4dc9 100%)
+  All borders → 2.2px solid #00F5D4
+
+The game's own menu buttons are colored by colorGameMenuButtons():
+  Custom Scenario → #0284C7 slate blue gradient, #00F5D4 border
+  My Account      → #6366F1 indigo gradient, #00F5D4 border
+  Game Menu       → #1E293B dark slate gradient, #0284C7 border
+  Color swatch    → solid #00F5D4, #0284C7 border
+
+--------------------------------------------------------------------------------
+SECTION 13 — ICONS
+--------------------------------------------------------------------------------
+
+Located in assets/icons/:
+
+  swords.svg       Custom Scenario
+  key.svg          My Account
+  menu.svg         Game Menu
+  mods.svg         Mods
+  store.svg        Mod Store
+  appearance.svg   Appearance
+  user.svg         (intended for user icon — see KNOWN ISSUES)
+
+The ICONS map in modLoader.js:
+  'Custom Scenario' → swords.svg
+  'My Account'      → key.svg
+  'Game Menu'       → menu.svg
+  'Multiplayer'     → swords.svg
+  'Mods'            → mods.svg
+  'Mod Store'       → store.svg
+  'Store'           → store.svg
+  'Appearance'      → appearance.svg
+  'Name Changer'    → (missing)
+  'Name'            → (missing)
+
+All SVGs MUST have xmlns="http://www.w3.org/2000/svg" on the root <svg> tag,
+otherwise they render as broken-image glyphs when used in <img> tags.
+
+Icon styling in modLoader.js:
+  width:22px; height:22px; flex:0 0 22px; object-fit:contain;
+  filter:brightness(0) invert(1) drop-shadow(0 0 4px rgba(0,245,212,0.35));
+  opacity:0.95; pointer-events:none
+
+The filter forces all SVG content to white with a cyan glow.
+Remove the filter if you want colored SVGs to show their own colors.
+
+--------------------------------------------------------------------------------
+SECTION 14 — THE CHROME BAR (top strip)
+--------------------------------------------------------------------------------
+
+Built by client-features.js → buildChrome().
+
+Layout (left → right):
+  ⬢ Modatorial v2.0.3     [brand + version]
+  ─────────────────────   [flex spacer]
+  ☰                       [sidebar collapse toggle]
+  📦 Store                [opens mod-store.html]
+  🔧 Mods                 [opens mod menu — F10]
+  🎨                      [cycle theme — F9]
+  📸                      [screenshot — F2]
+  ⏱️ Run                  [speedrun timer]
+  🏆 N/M                  [achievement count]
+  🔊 / 🔇                 [audio toggle]
+  💬                      [Discord link]
+  👤 Sign in / [your name] [account — SVG or emoji]
+  ✕                       [hide chrome bar — Ctrl+Shift+B]
+
+Currently the account button uses the 👤 EMOJI, not an SVG.
+
+--------------------------------------------------------------------------------
+SECTION 15 — MOD STORE (mod-store.js + mod-store.html)
+--------------------------------------------------------------------------------
+
+There are TWO modes:
+
+1. MODAL MODE (from game.html when ModStore.open() is called directly)
+   — Opens as an overlay inside game.html
+
+2. STANDALONE MODE (from game.html when ModStore.open() navigates)
+   — game.html's ModStore.open() does location.href = 'mod-store.html'
+   — mod-store.html loads ModStore.openInline()
+   — Close button becomes "← Back" and navigates to game.html
+
+The switch is controlled by document.body.dataset.ttStandalone:
+  If '1' → standalone page behaviour
+  Else  → modal behaviour
+
+Store features:
+  - Search bar
+  - Reload button
+  - Upload .ttmod button (opens file picker)
+  - Redeem promo code button
+  - Grid of mod cards (name, author, version, description, downloads)
+  - Install button per card
+  - Delete button (only if you're the author — requires authorUid on publish)
+  - Verified badge ✔ (green checkmark — appears when authorUid is set)
+
+Publish flow:
+  1. Click "Upload .ttmod" → pick file
+  2. Extract meta from <ttmod> block
+  3. Prompt for name, author, description
+  4. Optional cover image
+  5. Check promo code upload slots (via TerritorialPromo)
+  6. Write doc to /mods collection
+
+store-plus.js is a Modrinth-style UI overlay that intercepts the store's
+rendering. Adds categories (hud/theme/utility/cosmetic/ui/fun), sort options
+(relevance/downloads/updated/newest/name), and a detail modal with
+Description / Changelog / Versions tabs.
+
+--------------------------------------------------------------------------------
+SECTION 16 — ACCOUNT SYSTEM
+--------------------------------------------------------------------------------
+
+Two separate systems track stats:
+
+1. account.html — reads/writes localStorage 'tt-account-v1-<uid>'
+   Shows: level, XP, games played, wins, losses, surrenders, playtime,
+          last-match mods, username history, match history chart
+
+2. account.js — runs on game.html, tracks stats in real-time
+   Detects match start (aE.a2G===1) and end (aE.a2G!==1)
+   Polls every 250ms to detect outcome via aE.a2L:
+     a2L === 1 → win
+     a2L === 0 → loss
+     a2L === 2 → surrender/stalemate
+   Writes to the same localStorage key
+
+XP curve: xpForLevel(lvl) = 50*lvl² + 50*lvl
+XP gain:
+  +10 base per match
+  +50 bonus for a win
+  +5 bonus for a loss
+
+The storage key MUST be per-uid (tt-account-v1-<uid>) to avoid cross-account
+contamination. If you see another account's stats, the key is wrong.
+
+The profile card on account.html renders:
+  - Avatar (photoURL if available, else initial letter)
+  - Display name
+  - "Signed in with [provider]"
+  - Email (with ✅ if verified)
+  - Phone (if attached)
+  - Truncated User ID
+
+Phone attach flow:
+  - Uses invisible reCAPTCHA (window.__ttRecaptcha)
+  - Calls user.linkWithPhoneNumber(phone, recaptcha)
+  - User enters 6-digit code
+  - On confirm, writes phone to /users/{uid}.phone
+
+Sign out: calls Auth.logout() → redirects to login.html
+
+--------------------------------------------------------------------------------
+SECTION 17 — MODDABLES (in-game currency)
+--------------------------------------------------------------------------------
+
+Currency stored at localStorage 'tt-moddables'.
+Balance shown in the chrome bar as 💎 N.
+
+Earning:
+  Match played     +5
+  Match win        +15
+  Match loss       +2
+  Achievement      +25
+  Daily login      +10
+  Mod published    +50
+
+Spending:
+  Buy premium mods, tip creators, feature your own mods
+
+Listens for:
+  tt-account-outcome event (fired by account.js on match end)
+  Achievement toasts (via MutationObserver on document.body)
+
+Exposes window.Moddables + window.TerritorialModdables.
+
+--------------------------------------------------------------------------------
+SECTION 18 — PROMO CODES (promo-codes.js)
+--------------------------------------------------------------------------------
+
+Codes are hardcoded in the CODES object.
+
+Currently:
+  'HaapyG@mer' → HappyGamer Partner
+    badge: 🎬
+    grants: { uploadSlots: 5, storeCredits: 50 }
+    featuredMod: 'cannot-touch'
+    featuredPano: 'happygamer-pano'
+
+State persisted at localStorage 'tt-promo-redeemed'.
+
+API exposed at window.TerritorialPromo:
+  validate(code) → boolean
+  redeem(code)   → { ok, name, badge, grants, description }
+  getUploadSlots() / getUploadsUsed() / getUploadsRemaining() / useUploadSlot()
+  getStoreCredits() / useStoreCredit()
+  getRedeemed() / hasRedeemed(code)
+
+--------------------------------------------------------------------------------
+SECTION 19 — SOUNDS (sounds.js)
+--------------------------------------------------------------------------------
+
+All sounds are synthesized via Web Audio API — no asset files.
+
+Synths:
+  click, hover, type, attack, attacked, start, clock, timer,
+  victory, defeat, surrender, notify, ping, error, success, whoosh, levelup
+
+The 'attack' SFX is triggered by netSend hook, decoding packet byte[0]:
+  if ((bytes[0] & 0xF8) === 0x88) → attack packet
+
+The 'attacked' SFX is triggered by a MutationObserver watching for
+"attacks you" text in the DOM (from the game's own popups).
+
+The 'type' SFX plays on keydown when focus is on an input/textarea.
+Rate-limited to 30ms between hits with slight pitch variance.
+
+Volume saved at localStorage 'tt-volume'.
+Mute state at localStorage 'tt-muted'.
+
+Exposes window.TerritorialSounds.
+
+--------------------------------------------------------------------------------
+SECTION 20 — KNOWN ISSUES / OPEN BUGS
+--------------------------------------------------------------------------------
+
+1. USER ICON — the "user icon" the user wants to replace
+   STATUS: Unresolved.
+   The icon inside the name input (Player 805) is drawn by Chrome's
+   autofill UI, NOT by any code. It has no DOM node and cannot be
+   replaced. If the user wants a custom user icon, they'd need to
+   draw a new element on top of the input with position:fixed.
+   Verified via DevTools: no <img src="user.svg"> exists anywhere on
+   the page. Only swords/key/menu/mods/store/appearance loaded.
+
+2. game.html:123 classList error
+   STATUS: Fix identified but not applied.
+   The auth script does:
+     document.getElementById('tt-auth-veil').classList.add('hidden')
+   but the veil div doesn't exist (user removed it).
+   FIX: wrap in `const veil = ...; if (veil) veil.classList.add('hidden')`
+
+3. coolplayer.ttmod is malformed
+   STATUS: Needs deletion or fix.
+   File mods/ttmods/coolplayer.ttmod has the literal text "JSON" inside
+   its <ttmod> block instead of actual JSON. The loader logs an error
+   every page load. Either edit the file or delete it.
+
+4. authorUid not being written
+   STATUS: Depends on which mod-store.js version is deployed.
+   The minimal-patch mod-store.js (user's version) does NOT write
+   authorUid. So the /mods create rule will reject uploads unless you
+   remove the two authorUid lines from the rule.
+   The full-patched mod-store.js DOES write authorUid.
+
+5. Account stats cross-contamination (FIXED)
+   account.html and account.js now use tt-account-v1-<uid>.
+   Old stats at tt-account-v1 (no suffix) are orphaned.
+   To nuke: localStorage.removeItem('tt-account-v1')
+
+6. Menu button icons sometimes flash
+   STATUS: Cosmetic.
+   The coloring system polls every 300ms. If the game re-renders
+   a button, the color may briefly revert. Usually settles in <1s.
+   If persistent, migrate to MutationObserver.
+
+7. 200.js errors
+   STATUS: Probably harmless.
+   The game's own script throws:
+     TypeError: Cannot read properties of undefined (reading 'M_ID')
+   This appears to be an internal game error that fires many times.
+   It's not related to mods. Ignore unless gameplay breaks.
+
+8. Theme not applying at boot
+   STATUS: Fixed.
+   modLoader.js now defaults getTheme() to 'modatorial'.
+   But if localStorage.tt-theme is already set to a different theme
+   (e.g. 'midnight'), the default won't take effect until you click
+   the Modatorial chip in Appearance, or run:
+     localStorage.setItem('tt-theme', 'modatorial'); location.reload();
+
+--------------------------------------------------------------------------------
+SECTION 21 — RECENT CHANGES (chronological)
+--------------------------------------------------------------------------------
+
+1. Added Modatorial color theme (CSS vars + JS theme array)
+   Files: css/themes.css, modLoader.js, client-features.js, appearance.js
+
+2. Added standalone mod-store.html
+   Files: mod-store.html (new), mod-store.js (patched with openInline)
+
+3. Added auth gate to game.html + index.html
+   Files: game.html, index.html (auth veil + waitForAuth + redirect)
+
+4. Added profile + phone + sign-out to account.html
+   Files: account.html (added Firebase integration)
+
+5. Made account stats per-uid
+   Files: account.html, account.js
+
+6. Hardened Firestore rules
+   Added /usernames collection with strict validation
+   Locked /users writes to owner only
+   Added authorUid check to /mods create
+
+7. Recolored the game's menu buttons
+   Files: modLoader.js (colorGameMenuButtons function)
+
+8. Added icon support for injected buttons
+   Files: modLoader.js (ICONS map + applyIcons update)
+
+--------------------------------------------------------------------------------
+SECTION 22 — PENDING TASKS (user's wishlist)
+--------------------------------------------------------------------------------
+
+HIGH PRIORITY:
+  [ ] Fix game.html:123 classList error
+  [ ] Delete or fix coolplayer.ttmod
+  [ ] Resolve user-icon question (browser UI vs custom element)
+  [ ] Ensure color swatch is #00F5D4 cyan
+
+MEDIUM PRIORITY:
+  [ ] Add "Name Changer" button to the main menu with name.svg icon
+  [ ] Write user.svg-based chrome bar account icon (not just emoji)
+  [ ] Add default theme = modatorial to ALL entry points
+  [ ] Set up Google sign-in in Firebase Console
+
+LOW PRIORITY:
+  [ ] Migrate menu coloring from poll → MutationObserver
+  [ ] Add mobile-specific layout tweaks to mod-store.html
+  [ ] Add verified badge to store cards (needs authorUid writing)
+
+--------------------------------------------------------------------------------
+SECTION 23 — USER PREFERENCES
+--------------------------------------------------------------------------------
+
+The user (Roble Code / Pakball13):
+  - Wants code given AS-IS, not re-architected
+  - Hates when I rewrite their files with my "improvements"
+  - When they say "full file", they want the WHOLE file printed, not "find
+    this and replace"
+  - Prefers minimal patches over rewrites
+  - Uses VS Code Live Server on 127.0.0.1:5500
+  - Wants specific hex colors respected EXACTLY
+  - Will paste console output if asked
+
+When working with this user:
+  - Give the actual full file, not partial edits
+  - Don't wrap their existing working code in "improvements"
+  - Match their palette exactly (#00F5D4, #0F172A, #1E293B, #0284C7,
+    #6366F1, #10B981, #059669)
+  - If they say "forget it" it means stop over-engineering
+  - Test suggestions must be concrete: "paste this in DevTools", not
+    "check the network tab"
+
+--------------------------------------------------------------------------------
+SECTION 24 — DEBUGGING CHEATSHEET
+--------------------------------------------------------------------------------
+
+Check auth state:
+  console.log(window.Auth?.ready, window.Auth?.current())
+
+Check loaded mods:
+  console.table([...TerritorialMods.mods.values()].map(m =>
+    ({ id: m.id, status: m.status, v: m.version })))
+
+Check theme:
+  console.log(TerritorialMods.getTheme())
+
+Force theme:
+  TerritorialMods.setTheme('modatorial')
+
+Force layout:
+  TerritorialMods.setLayout('sidebar')
+
+Check disabled mods:
+  localStorage.getItem('tt-disabled-mods')
+
+Reset all mod state:
+  TerritorialMods.resetModState()
+
+Check account stats:
+  const uid = Auth.current()?.uid;
+  console.log(localStorage.getItem('tt-account-v1-' + uid))
+
+See all SVGs loaded:
+  document.querySelectorAll('img[src*=".svg"]').forEach(i =>
+    console.log(i.src, i.naturalWidth > 0 ? 'OK' : 'BROKEN'))
+
+See all buttons on main menu:
+  [...document.querySelectorAll('body > button')].forEach(b =>
+    console.log(b.textContent.trim().slice(0,30), b.id, b.style.background))
+
+Check mod-store standalone mode:
+  console.log(document.body.dataset.ttStandalone)
+
+--------------------------------------------------------------------------------
+SECTION 25 — HOW TO CONTINUE IN A NEW CHAT
+--------------------------------------------------------------------------------
+
+Paste this file, then add:
+
+"Continuing from the progress.txt. The last thing we did was [X].
+I want to [Y]."
+
+Known good conversation starters:
+  - "Add the Name Changer button with name.svg icon to the main menu"
+  - "Fix the game.html:123 error"
+  - "Make the account button in the chrome bar use user.svg"
+  - "Delete the coolplayer.ttmod references"
+  - "Why does the mod-store show 'Cannot read properties of undefined'?"
+
+The AI should:
+  1. Read this whole file
+  2. Understand the palette is #00F5D4 / #0F172A / #1E293B / #0284C7 / #6366F1 / #10B981 / #059669
+  3. NOT rewrite files the user hasn't asked about
+  4. Give full file dumps when asked for full files
+  5. Follow the "User Preferences" section above
+
+--------------------------------------------------------------------------------
+END OF PROGRESS FILE
+--------------------------------------------------------------------------------

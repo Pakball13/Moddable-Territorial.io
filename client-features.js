@@ -97,8 +97,8 @@
   /* ── Theme ──────────────────────────────────────────── */
   const Theme = {
     current: (() => {
-      const v = store.get(KEYS.theme, 'midnight');
-      return typeof v === 'string' ? v : 'midnight';
+      const v = store.get(KEYS.theme, 'modatorial');
+      return typeof v === 'string' ? v : 'modatorial';
     })(),
     apply(id) {
       const t = THEMES.find(x => x.id === id) || THEMES[0];
