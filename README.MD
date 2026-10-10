@@ -1,26 +1,18 @@
-<!-- ═══════════════════════════════════════════════════════════════════
-     MODATORIAL.IO — README
-     The friendly modding platform for territorial.io
-     v2.0.0 — "Real Client"
-     ═══════════════════════════════════════════════════════════════════ -->
+# 🛠️ Modatorial.io Wiki
 
-<div align="center">
+Welcome to the Modatorial.io wiki. Your one-stop shop for modding territorial.io.
 
-# 🛠️ Modatorial.io
+## 💬 Community
 
-**The friendly modding platform for territorial.io**
+Join us on Discord: **[discord.gg/5y8bE2hYSY](https://discord.gg/5y8bE2hYSY)**
 
-[![Version](https://img.shields.io/badge/version-2.0.0-3fb950?style=flat-square)](CHANGELOG.md)
-[![License](https://img.shields.io/badge/license-MIT-3fb950?style=flat-square)](LICENSE)
-[![Mods](https://img.shields.io/badge/mods-30%2B-3fb950?style=flat-square)](https://github.com/Pakball13/modatorial.io/discussions)
-[![Discord](https://img.shields.io/badge/discord-join-5865F2?style=flat-square)](https://discord.gg/WUYW6Uy9JM)
-[![Made with JS](https://img.shields.io/badge/made%20with-vanilla%20JS-yellow?style=flat-square)](#)
+The Discord has dedicated channels for help, bug reports, mod showcases, and feature requests.
 
-*Play it your way. Mod it your way.*
+## 🔗 Quick links
 
-[Quick Start](#-quick-start) · [Mod Store](#-the-mod-store) · [Make a Mod](#-making-your-first-mod) · [API Reference](#-the-mod-api) · [Discord]()
-
-</div>
+- [Mod Store](https://github.com/Pakball13/moddatorial.io) — press `F8` in-game
+- [Report a bug](https://github.com/Pakball13/moddatorial.io/issues/new)
+- [Download the latest release](https://github.com/Pakball13/moddatorial.io/releases)
 
 ---
 
