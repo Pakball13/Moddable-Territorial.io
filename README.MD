@@ -13,7 +13,7 @@
 [![Version](https://img.shields.io/badge/version-2.0.0-3fb950?style=flat-square)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-3fb950?style=flat-square)](LICENSE)
 [![Mods](https://img.shields.io/badge/mods-30%2B-3fb950?style=flat-square)](https://github.com/Pakball13/moddatorial.io/discussions)
-[![Discord](https://img.shields.io/badge/discord-join-5865F2?style=flat-square)](https://discord.gg/moddatorial)
+[![Discord](https://img.shields.io/badge/discord-join-5865F2?style=flat-square)](https://discord.gg/WUYW6Uy9JM)
 [![Made with JS](https://img.shields.io/badge/made%20with-vanilla%20JS-yellow?style=flat-square)](#)
 
 *Play it your way. Mod it your way.*
