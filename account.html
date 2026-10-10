@@ -1,93 +1,70 @@
+<!doctype html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>My Account · Modatorial.io</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Favicon -->
 <link rel="icon" href="favicon.ico" type="image/x-icon">
 <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
 <link rel="apple-touch-icon" href="favicon.ico">
-<link rel="mask-icon" href="favicon.ico">
 
 <style>
   :root {
-    --bg:        #0a0c10;
-    --bg-card:   #161b22;
-    --border:    #30363d;
+    --bg:        #0F172A;
+    --bg-card:   #1E293B;
+    --border:    #0284C7;
     --text:      #e6edf3;
     --text-dim:  #7d8590;
-    --accent:    #3fb950;
-    --accent-2:  #58a6ff;
+    --accent:    #00F5D4;
+    --accent-2:  #6366F1;
     --warn:      #d29922;
     --danger:    #f85149;
   }
   * { box-sizing: border-box; }
   html, body {
-    margin: 0;
-    padding: 0;
-    min-height: 100vh;
-    background: var(--bg);
-    color: var(--text);
+    margin: 0; padding: 0; min-height: 100vh;
+    background: var(--bg); color: var(--text);
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-size: 14px;
   }
 
   /* ---------- header ---------- */
   .header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    gap: 14px;
+    position: sticky; top: 0; z-index: 10;
+    display: flex; align-items: center; gap: 14px;
     padding: 14px 22px;
-    background: linear-gradient(180deg, rgba(18,20,24,0.98), rgba(10,11,14,0.96));
+    background: linear-gradient(180deg, rgba(22,34,60,0.98), rgba(15,23,42,0.96));
     border-bottom: 1px solid var(--border);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
   .header .brand {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: .3px;
-    flex: 1;
+    font-size: 16px; font-weight: 700; letter-spacing: .3px;
+    flex: 1; color: var(--text);
   }
   .header .brand .badge {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 8px;
-    margin-left: 8px;
-    border-radius: 10px;
-    background: var(--accent);
-    color: #062a0d;
+    font-size: 10px; font-weight: 700; padding: 2px 8px;
+    margin-left: 8px; border-radius: 10px;
+    background: var(--accent); color: #062a0d;
     vertical-align: middle;
   }
   .header button {
     padding: 8px 16px;
-    background: rgba(255,255,255,0.06);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background .15s;
+    background: rgba(255,255,255,0.06); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: background .15s;
   }
   .header button:hover { background: rgba(255,255,255,0.12); }
-  .header button.danger {
-    background: #4a1616;
-    border-color: #8b2d2d;
-  }
+  .header button.danger { background: #4a1616; border-color: #8b2d2d; }
   .header button.danger:hover { background: #6a2020; }
 
   /* ---------- layout ---------- */
   .wrap {
-    max-width: 1000px;
-    margin: 0 auto;
+    max-width: 1000px; margin: 0 auto;
     padding: 24px 22px 48px;
-    display: grid;
-    gap: 16px;
+    display: grid; gap: 16px;
   }
 
   /* ---------- card ---------- */
@@ -99,79 +76,100 @@
   }
   .card h2 {
     margin: 0 0 14px;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px;
     color: var(--accent-2);
   }
 
-  /* ---------- level card ---------- */
-  .level-row {
-    display: flex;
-    align-items: center;
-    gap: 24px;
+  /* ---------- profile card ---------- */
+  .profile-row {
+    display: flex; align-items: center; gap: 16px;
   }
-  .level-num {
-    font-size: 64px;
-    font-weight: 900;
-    line-height: 1;
-    color: var(--accent);
-    text-shadow: 0 0 30px rgba(63,185,80,.45);
-    min-width: 90px;
-    text-align: center;
-  }
-  .level-meta {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .level-label {
-    font-size: 15px;
-    opacity: .9;
-  }
-  .xp-bar {
-    height: 16px;
-    background: #0a0c10;
-    border: 1px solid var(--border);
-    border-radius: 8px;
+  .profile-avatar {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg, #10B981, #00F5D4);
+    display: flex; align-items: center; justify-content: center;
+    font: 700 24px system-ui; color: #062a0d; flex: 0 0 64px;
     overflow: hidden;
-    position: relative;
+  }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-info { flex: 1; min-width: 0; }
+  .profile-info .name {
+    font-size: 18px; font-weight: 700; margin-bottom: 2px;
+  }
+  .profile-info .sub { font-size: 12px; color: var(--text-dim); }
+  .profile-info .field {
+    font-size: 13px; margin-top: 6px;
+    word-break: break-all;
+  }
+  .profile-info .field strong { color: var(--text-dim); font-weight: 600; }
+
+  .profile-actions {
+    display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .btn-green {
+    background: #10B981; color: #fff; border: 1px solid #059669;
+    padding: 8px 16px; border-radius: 6px; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+  }
+  .btn-green:hover { background: #059669; }
+  .btn-red {
+    background: #6a2020; color: #fff; border: 1px solid #8b2d2d;
+    padding: 8px 16px; border-radius: 6px; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+  }
+  .btn-red:hover { background: #8b2d2d; }
+  .btn-ghost {
+    background: transparent; color: var(--text); border: 1px solid var(--border);
+    padding: 8px 16px; border-radius: 6px; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.06); }
+
+  input[type=tel], input[type=text] {
+    width: 100%; padding: 10px 14px;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    font-family: inherit; font-size: 14px;
+    outline: none;
+  }
+  input[type=tel]:focus, input[type=text]:focus { border-color: var(--accent); }
+
+  /* ---------- level ---------- */
+  .level-row { display: flex; align-items: center; gap: 24px; }
+  .level-num {
+    font-size: 64px; font-weight: 900; line-height: 1;
+    color: var(--accent); text-shadow: 0 0 30px rgba(0,245,212,.45);
+    min-width: 90px; text-align: center;
+  }
+  .level-meta { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .level-label { font-size: 15px; opacity: .9; }
+  .xp-bar {
+    height: 16px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden; position: relative;
   }
   .xp-fill {
     height: 100%;
-    background: linear-gradient(90deg, #238636, #3fb950);
+    background: linear-gradient(90deg, #059669, #00F5D4);
     transition: width .5s cubic-bezier(.34,1.56,.64,1);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
   }
-  .xp-need {
-    font-size: 12px;
-    opacity: .6;
-  }
+  .xp-need { font-size: 12px; opacity: .6; }
 
-  /* ---------- stat grid ---------- */
-  .grid-2 {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-  @media (max-width: 640px) {
-    .grid-2 { grid-template-columns: 1fr; }
-  }
+  /* ---------- stats grid ---------- */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
 
   .stat {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
+    display: flex; justify-content: space-between; align-items: baseline;
     padding: 8px 0;
     border-bottom: 1px dashed rgba(255,255,255,.06);
   }
   .stat:last-child { border-bottom: 0; }
   .stat .k { opacity: .75; font-size: 13px; }
   .stat .v {
-    font-weight: 700;
-    font-size: 20px;
+    font-weight: 700; font-size: 20px;
     font-feature-settings: "tnum";
   }
   .stat .v.green  { color: var(--accent); }
@@ -181,50 +179,29 @@
 
   /* ---------- chart ---------- */
   .chart {
-    width: 100%;
-    height: 220px;
-    background: #0a0c10;
-    border-radius: 8px;
-    display: block;
+    width: 100%; height: 220px; background: var(--bg);
+    border-radius: 8px; display: block;
   }
 
   /* ---------- chips ---------- */
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip {
-    font-size: 12px;
-    padding: 5px 12px;
-    border-radius: 999px;
-    background: #21262d;
-    border: 1px solid var(--border);
-    color: #c9d1d9;
+    font-size: 12px; padding: 5px 12px; border-radius: 999px;
+    background: var(--bg); border: 1px solid var(--border); color: #c9d1d9;
   }
   .chip.current {
-    border-color: var(--accent);
-    background: rgba(63,185,80,.12);
-    color: #adf5b6;
+    border-color: var(--accent); background: rgba(0,245,212,.12);
+    color: #a5f5e4;
   }
-  .chip.current::before {
-    content: "★ ";
-    color: var(--accent);
-  }
+  .chip.current::before { content: "★ "; color: var(--accent); }
 
   /* ---------- empty ---------- */
-  .empty {
-    font-size: 13px;
-    opacity: .55;
-    font-style: italic;
-  }
+  .empty { font-size: 13px; opacity: .55; font-style: italic; }
 
   /* ---------- history list ---------- */
   .hist-item {
-    display: grid;
-    grid-template-columns: 26px 1fr 80px 90px;
-    gap: 12px;
-    align-items: center;
+    display: grid; grid-template-columns: 26px 1fr 80px 90px;
+    gap: 12px; align-items: center;
     padding: 8px 0;
     border-bottom: 1px dashed rgba(255,255,255,.06);
     font-size: 13px;
@@ -237,9 +214,33 @@
   .hist-result.win  { color: var(--accent); }
   .hist-result.loss { color: var(--danger); }
   .hist-result.surrender { color: var(--warn); }
+
+  /* ---------- auth veil ---------- */
+  #tt-auth-veil {
+    position: fixed; inset: 0;
+    background: radial-gradient(circle at 50% 40%, #1a2740 0%, #0F172A 55%, #060a14 100%);
+    z-index: 2000000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 14px; color: var(--text-dim);
+    font-size: 14px; transition: opacity .35s ease;
+  }
+  #tt-auth-veil.hidden { opacity: 0; pointer-events: none; }
+  #tt-auth-veil .spinner {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid rgba(0,245,212,0.15);
+    border-top-color: var(--accent);
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
+
+<div id="tt-auth-veil">
+  <div class="spinner"></div>
+  <div>Checking sign-in…</div>
+</div>
 
 <div class="header">
   <div class="brand">🧑 My Account<span class="badge">Modatorial</span></div>
@@ -249,6 +250,43 @@
 
 <div class="wrap">
 
+  <!-- ============================================================
+       PROFILE (Firebase account info)
+       ============================================================ -->
+  <div class="card" id="card-profile">
+    <h2>🔑 Signed In As</h2>
+    <div id="profile-info">
+      <div class="empty">Loading…</div>
+    </div>
+    <div class="profile-actions">
+      <button id="btn-attach-phone" class="btn-green">📱 Attach Phone Number</button>
+      <button id="btn-sign-out" class="btn-red">🚪 Sign Out</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       PHONE ATTACH (hidden until "Attach Phone" is clicked)
+       ============================================================ -->
+  <div class="card" id="card-phone" style="display:none;">
+    <h2>📱 Attach Phone Number</h2>
+    <input type="tel" id="phone-input" placeholder="+1234567890">
+    <div id="phone-recaptcha" style="margin:10px 0;"></div>
+    <div class="profile-actions">
+      <button id="btn-send-code" class="btn-green">Send Code</button>
+      <button id="btn-cancel-phone" class="btn-ghost">Cancel</button>
+    </div>
+    <div id="phone-code-wrap" style="display:none;margin-top:12px;">
+      <input type="text" id="phone-code" placeholder="6-digit code">
+      <div class="profile-actions">
+        <button id="btn-confirm-code" class="btn-green">Confirm Code</button>
+      </div>
+    </div>
+    <div id="phone-status" style="font-size:13px;margin-top:10px;opacity:.7;"></div>
+  </div>
+
+  <!-- ============================================================
+       LEVEL
+       ============================================================ -->
   <div class="card" id="card-level">
     <h2>⭐ Level</h2>
     <div class="level-row">
@@ -270,7 +308,6 @@
       <div class="stat"><span class="k">Surrenders</span>   <span class="v yellow"id="s-surrender">0</span></div>
       <div class="stat"><span class="k">Win rate</span>     <span class="v green" id="s-wr">—</span></div>
     </div>
-
     <div class="card">
       <h2>⏱ Playtime</h2>
       <div class="stat"><span class="k">Total</span>     <span class="v blue"   id="s-total">0s</span></div>
@@ -289,7 +326,6 @@
       <h2>🔧 Last Match Mods</h2>
       <div class="chips" id="last-mods"></div>
     </div>
-
     <div class="card">
       <h2>📛 Previous Usernames</h2>
       <div class="chips" id="usernames"></div>
@@ -303,7 +339,176 @@
 
 </div>
 
+<!-- Firebase + auth -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+
 <script>
+(async () => {
+  'use strict';
+
+  /* ---- 1. Auth gate ---- */
+  const isLocal = (location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+  const skip = isLocal && new URLSearchParams(location.search).has('skipauth');
+
+  function waitForAuth(ms) {
+    return new Promise(resolve => {
+      if (window.Auth && window.Auth.ready) return resolve(window.Auth.current());
+      const start = Date.now();
+      const iv = setInterval(() => {
+        if (window.Auth && window.Auth.ready) {
+          clearInterval(iv); resolve(window.Auth.current());
+        } else if (Date.now() - start > (ms || 7000)) {
+          clearInterval(iv); resolve(null);
+        }
+      }, 80);
+    });
+  }
+
+  let currentUser = null;
+  if (!skip) {
+    currentUser = await waitForAuth();
+    if (!currentUser) {
+      try { sessionStorage.setItem('tt-auth-return', 'account.html'); } catch {}
+      location.replace('login.html?next=' + encodeURIComponent('account.html'));
+      return;
+    }
+  }
+
+  document.getElementById('tt-auth-veil').classList.add('hidden');
+
+  /* ---- 2. Profile render ---- */
+  async function renderProfile() {
+    const box = document.getElementById('profile-info');
+    const user = window.Auth ? window.Auth.current() : null;
+
+    if (!user) {
+      box.innerHTML =
+        '<div style="color:#f85149;">Not signed in — ' +
+        '<a href="login.html" style="color:#00F5D4;">sign in</a></div>';
+      return;
+    }
+
+    let profile = null;
+    try { profile = await window.Auth.profile(user.uid); } catch {}
+
+    const provider = user.providerData && user.providerData[0]
+      ? user.providerData[0].providerId : 'unknown';
+    const providerName =
+      provider === 'google.com' ? 'Google' :
+      provider === 'github.com' ? 'GitHub' :
+      provider === 'password'   ? 'Email' :
+      provider === 'phone'      ? 'Phone' : provider;
+
+    const initial = ((user.displayName || user.email || '?')[0] || '?').toUpperCase();
+
+    box.innerHTML = `
+      <div class="profile-row">
+        <div class="profile-avatar">
+          ${user.photoURL ? `<img src="${user.photoURL}" alt="">` : initial}
+        </div>
+        <div class="profile-info">
+          <div class="name">${escapeHtml(user.displayName || 'Unnamed User')}</div>
+          <div class="sub">Signed in with ${providerName}</div>
+          <div class="field"><strong>Email:</strong> ${
+            user.email ? escapeHtml(user.email) + (user.emailVerified ? ' ✅' : '') :
+            '<em style="opacity:.5">not set</em>'
+          }</div>
+          <div class="field"><strong>Phone:</strong> ${
+            (profile && profile.phone) || '<em style="opacity:.5">not attached</em>'
+          }</div>
+          <div class="field"><strong>User ID:</strong> <code style="font-size:11px;opacity:.7;">${
+            user.uid.slice(0, 12)
+          }…</code></div>
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  await renderProfile();
+
+  /* ---- 3. Sign out ---- */
+  document.getElementById('btn-sign-out').addEventListener('click', async () => {
+    if (!confirm('Sign out of Modatorial.io?')) return;
+    try { await window.Auth.logout(); } catch (e) { console.warn(e); }
+    location.href = 'login.html';
+  });
+
+  /* ---- 4. Phone attach ---- */
+  let pendingConfirmation = null;
+  const $cardPhone = document.getElementById('card-phone');
+
+  document.getElementById('btn-attach-phone').addEventListener('click', () => {
+    $cardPhone.style.display = 'block';
+    $cardPhone.scrollIntoView({ behavior: 'smooth' });
+  });
+
+  document.getElementById('btn-cancel-phone').addEventListener('click', () => {
+    $cardPhone.style.display = 'none';
+    document.getElementById('phone-code-wrap').style.display = 'none';
+    document.getElementById('phone-status').textContent = '';
+  });
+
+  document.getElementById('btn-send-code').addEventListener('click', async () => {
+    const phone = document.getElementById('phone-input').value.trim();
+    if (!phone) return;
+    const status = document.getElementById('phone-status');
+    status.textContent = 'Sending…';
+
+    try {
+      const auth = firebase.auth();
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not signed in');
+
+      if (!window.__ttRecaptcha) {
+        window.__ttRecaptcha = new firebase.auth.RecaptchaVerifier(
+          'phone-recaptcha', { size: 'invisible' }
+        );
+      }
+
+      pendingConfirmation = await user.linkWithPhoneNumber(phone, window.__ttRecaptcha);
+      document.getElementById('phone-code-wrap').style.display = 'block';
+      status.textContent = '✅ Code sent — check your phone';
+    } catch (e) {
+      console.error('[Phone]', e);
+      status.textContent = '❌ ' + (e.message || e);
+    }
+  });
+
+  document.getElementById('btn-confirm-code').addEventListener('click', async () => {
+    const code = document.getElementById('phone-code').value.trim();
+    if (!code || !pendingConfirmation) return;
+    const status = document.getElementById('phone-status');
+    status.textContent = 'Verifying…';
+    try {
+      const result = await pendingConfirmation.confirm(code);
+      const user = firebase.auth().currentUser;
+      await firebase.firestore().collection('users').doc(user.uid).update({
+        phone: result.user.phoneNumber,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      status.textContent = '✅ Phone attached!';
+      pendingConfirmation = null;
+      await renderProfile();
+    } catch (e) {
+      console.error('[Phone]', e);
+      status.textContent = '❌ ' + (e.message || e);
+    }
+  });
+
+})();
+
+/* ============================================================
+ * LOCAL STATS — same as before, unchanged
+ * ============================================================ */
 (() => {
   'use strict';
 
@@ -320,7 +525,6 @@
     if (raw) state = Object.assign(defaultState(), JSON.parse(raw));
   } catch (e) { console.warn('Could not load account state:', e); }
 
-  /* ---------- level curve ---------- */
   const xpForLevel = lvl => 50 * lvl * lvl + 50 * lvl;
   function levelFromXp(xp) { let l = 0; while (xp >= xpForLevel(l + 1)) l++; return l; }
   function xpProgress(xp) {
@@ -330,7 +534,6 @@
     return { level: lvl, cur, next, need: next - cur, have: xp - cur };
   }
 
-  /* ---------- time ---------- */
   function fmtTime(ms) {
     const s = Math.floor(ms / 1000);
     const h = Math.floor(s / 3600);
@@ -346,7 +549,6 @@
   }
   const esc = s => String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 
-  /* ---------- chart ---------- */
   function drawChart() {
     const canvas = document.getElementById('chart');
     const g = canvas.getContext('2d');
@@ -355,7 +557,7 @@
 
     const values = [state.wins, state.losses, state.surrenders];
     const labels = ['Wins', 'Losses', 'Surrenders'];
-    const colors = ['#3fb950', '#f85149', '#d29922'];
+    const colors = ['#00F5D4', '#f85149', '#d29922'];
     const max = Math.max(1, ...values);
 
     const padL = 44, padR = 16, padT = 16, padB = 40;
@@ -364,7 +566,6 @@
     const barW = chartW / values.length;
     const gap = barW * 0.25;
 
-    // grid
     g.strokeStyle = 'rgba(255,255,255,0.06)';
     g.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
@@ -401,7 +602,6 @@
     });
   }
 
-  /* ---------- render ---------- */
   function render() {
     const p = xpProgress(state.xp);
     document.getElementById('lvl-num').textContent = p.level;
@@ -423,7 +623,6 @@
     document.getElementById('s-avg').textContent = fmtTime(avg);
     document.getElementById('s-hours').textContent = Math.floor(state.playtimeMs / 3600000) + 'h';
 
-    // last mods
     const lastMods = document.getElementById('last-mods');
     lastMods.innerHTML = '';
     if (state.lastMods && state.lastMods.length) {
@@ -440,7 +639,6 @@
       lastMods.appendChild(e);
     }
 
-    // usernames
     const users = document.getElementById('usernames');
     users.innerHTML = '';
     if (state.usernames && state.usernames.length) {
@@ -457,7 +655,6 @@
       users.appendChild(e);
     }
 
-    // history
     const hist = document.getElementById('history');
     hist.innerHTML = '';
     if (state.history && state.history.length) {
@@ -485,7 +682,6 @@
     drawChart();
   }
 
-  /* ---------- actions ---------- */
   document.getElementById('btn-reset').addEventListener('click', () => {
     if (!confirm('Reset all account stats? This cannot be undone.')) return;
     state = defaultState();
@@ -506,7 +702,6 @@
     if (e.key === 'Escape') document.getElementById('btn-close').click();
   });
 
-  /* ---------- live updates ---------- */
   window.addEventListener('storage', e => {
     if (e.key === KEY) {
       try { state = Object.assign(defaultState(), JSON.parse(e.newValue || '{}')); render(); }

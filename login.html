@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · Modatorial.io</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #0a0c10; color: #e6edf3;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    width: 100%; max-width: 420px; padding: 32px;
+    background: #16181d; border: 1px solid #262a31; border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 6px; font-weight: 700; font-size: 18px;
+  }
+  .brand .icon { font-size: 22px; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
+  .sub { margin: 0 0 24px; color: #8b949e; font-size: 13px; }
+  label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: #adbac7; margin: 14px 0 6px;
+  }
+  input[type="email"], input[type="password"] {
+    width: 100%; padding: 11px 13px;
+    border: 1px solid #30363d; border-radius: 8px;
+    background: #0d1117; color: #e6edf3;
+    font: 400 14px system-ui;
+    transition: border-color .15s;
+  }
+  input:focus { outline: none; border-color: #3fb950; }
+  .pw-wrap { position: relative; }
+  .pw-toggle {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: transparent; border: 0; color: #8b949e;
+    font-size: 16px; cursor: pointer; padding: 4px 8px;
+  }
+  .pw-toggle:hover { color: #e6edf3; }
+  .msg {
+    margin-top: 16px; padding: 10px 14px; border-radius: 8px;
+    font-size: 13px; display: none;
+  }
+  .msg.error { display: block; background: #2d1414; color: #f85149;
+               border: 1px solid #7a1f1f; }
+  .msg.success { display: block; background: #0d2a14; color: #3fb950;
+                 border: 1px solid #1a5424; }
+  button.submit {
+    width: 100%; padding: 12px; margin-top: 20px;
+    background: #238636; color: #fff; border: 0; border-radius: 8px;
+    font: 600 14px system-ui; cursor: pointer;
+    transition: background .15s;
+  }
+  button.submit:hover:not(:disabled) { background: #2ea043; }
+  button.submit:disabled { background: #1a3a22; cursor: default; opacity: .7; }
+  .row {
+    display: flex; justify-content: space-between;
+    margin-top: 16px; font-size: 12px;
+  }
+  .row a { color: #3fb950; text-decoration: none; }
+  .row a:hover { text-decoration: underline; }
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 24px 0 0; color: #6e7681; font-size: 11px;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: #262a31;
+  }
+  .footer {
+    text-align: center; margin-top: 20px;
+    font-size: 12px; color: #8b949e;
+  }
+  .footer a { color: #3fb950; text-decoration: none; font-weight: 600; }
+  .footer a:hover { text-decoration: underline; }
+  .config-warn {
+    margin-bottom: 20px; padding: 12px;
+    background: #2a1a0a; color: #f0883e;
+    border: 1px solid #f0883e; border-radius: 8px;
+    font-size: 12px; line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><span class="icon">🛠️</span><span>Modatorial.io</span></div>
+    <h1>Sign in</h1>
+    <p class="sub">Welcome back — let's get you in.</p>
+
+    <div id="configWarn" class="config-warn" style="display:none"></div>
+
+    <form id="loginForm" autocomplete="on">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email"
+             placeholder="you@example.com" required>
+
+      <label for="password">Password</label>
+      <div class="pw-wrap">
+        <input id="password" type="password" autocomplete="current-password"
+               placeholder="Your password" required>
+        <button type="button" class="pw-toggle" id="pwToggle">👁</button>
+      </div>
+
+      <button type="submit" class="submit" id="submitBtn">Sign in</button>
+    </form>
+
+    <div id="msg" class="msg"></div>
+
+    <div class="row">
+      <a href="#" id="forgot">Forgot password?</a>
+    </div>
+
+    <div class="divider">OR</div>
+
+    <div class="footer">
+      Don't have an account?
+      <a href="signup.html" id="signupLink">Create one</a>
+    </div>
+    <div class="footer" style="margin-top:10px">
+      <a href="game.html" style="color:#8b949e">← Back to game</a>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <!-- Your config (window.MODATORIAL_FIREBASE = {...}) -->
+  <script src="firebase-config.js"></script>
+
+  <script>
+  (function () {
+    'use strict';
+
+    const $ = id => document.getElementById(id);
+    const msgEl   = $('msg');
+    const warnEl  = $('configWarn');
+    const submit  = $('submitBtn');
+
+    function showError(text) {
+      msgEl.className = 'msg error';
+      msgEl.textContent = text;
+    }
+    function showSuccess(text) {
+      msgEl.className = 'msg success';
+      msgEl.textContent = text;
+    }
+    function showWarn(html) {
+      warnEl.style.display = 'block';
+      warnEl.innerHTML = html;
+    }
+    function clearMsg() { msgEl.className = 'msg'; msgEl.textContent = ''; }
+
+    // ── 1. Verify Firebase SDK loaded ─────────────────
+    if (typeof firebase === 'undefined') {
+      showWarn('❌ Firebase SDK failed to load. Check your internet connection.');
+      submit.disabled = true;
+      return;
+    }
+
+    // ── 2. Verify config ──────────────────────────────
+    const cfg = window.MODATORIAL_FIREBASE;
+    if (!cfg || !cfg.apiKey || String(cfg.apiKey).indexOf('YOUR_') === 0) {
+      showWarn(
+        '❌ <strong>firebase-config.js is missing or has placeholders.</strong><br>' +
+        'Open <code>firebase-config.js</code> and paste your real values from ' +
+        '<em>Firebase Console → Project Settings → Your apps</em>.'
+      );
+      submit.disabled = true;
+      return;
+    }
+
+    // ── 3. Initialize Firebase (idempotent) ───────────
+    let auth, db;
+    try {
+      if (!firebase.apps || !firebase.apps.length) {
+        firebase.initializeApp(cfg);
+        console.log('[Login] Firebase initialized');
+      } else {
+        console.log('[Login] Firebase already initialized');
+      }
+      auth = firebase.auth();
+      db   = firebase.firestore();
+    } catch (e) {
+      showWarn('❌ Firebase failed to initialize: ' + e.message);
+      submit.disabled = true;
+      return;
+    }
+
+    // ── 4. Redirect if already signed in ──────────────
+    const next = new URLSearchParams(location.search).get('next') || 'game.html';
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        console.log('[Login] Already signed in — redirecting');
+        location.replace(next);
+      }
+    });
+
+    // ── 5. Password visibility toggle ─────────────────
+    const pwInput = $('password');
+    $('pwToggle').addEventListener('click', () => {
+      const isPw = pwInput.type === 'password';
+      pwInput.type = isPw ? 'text' : 'password';
+      $('pwToggle').textContent = isPw ? '🙈' : '👁';
+    });
+
+    // ── 6. Form submit ────────────────────────────────
+    $('loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      clearMsg();
+
+      const email    = $('email').value.trim();
+      const password = pwInput.value;
+
+      if (!email || !password) {
+        return showError('Please fill in both email and password.');
+      }
+
+      submit.disabled = true;
+      const oldLabel = submit.textContent;
+      submit.textContent = 'Signing in…';
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        showSuccess('✅ Signed in! Redirecting…');
+        setTimeout(() => location.replace(next), 400);
+      } catch (err) {
+        console.error('[Login]', err);
+        const code = err.code || '';
+        let friendly = err.message;
+        if (code.includes('user-not-found'))
+          friendly = 'No account found for that email.';
+        else if (code.includes('wrong-password') || code.includes('invalid-credential'))
+          friendly = 'Incorrect password.';
+        else if (code.includes('invalid-email'))
+          friendly = 'That email address looks invalid.';
+        else if (code.includes('too-many-requests'))
+          friendly = 'Too many attempts. Try again in a minute.';
+        else if (code.includes('operation-not-allowed'))
+          friendly = 'Email/Password sign-in is not enabled in Firebase Console. ' +
+                     'Enable it under Authentication → Sign-in method.';
+        else if (code.includes('network'))
+          friendly = 'Network error — check your connection.';
+        showError('❌ ' + friendly);
+        submit.disabled = false;
+        submit.textContent = oldLabel;
+      }
+    });
+
+    // ── 7. Forgot password ────────────────────────────
+    $('forgot').addEventListener('click', async e => {
+      e.preventDefault();
+      const email = $('email').value.trim();
+      if (!email) return showError('Enter your email above, then click "Forgot password?".');
+      try {
+        await auth.sendPasswordResetEmail(email);
+        showSuccess('📧 Password reset email sent to ' + email);
+      } catch (err) {
+        showError('❌ ' + err.message);
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

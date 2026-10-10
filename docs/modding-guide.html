@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Modatorial.io — Modding Guide</title>
+<style>
+  /* ── Base ──────────────────────────────────────────── */
+  :root {
+    --accent: #3fb950;
+    --accent-dim: #2d8a3e;
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #666;
+    --code-bg: #f4f6f8;
+    --border: #d0d7de;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.55;
+    color: var(--fg);
+    background: var(--bg);
+  }
+  body {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 60px 80px;
+  }
+  h1, h2, h3, h4 { font-weight: 700; line-height: 1.25; margin-top: 1.6em; }
+  h1 { font-size: 26pt; margin-top: 0; }
+  h2 { font-size: 18pt; color: var(--accent-dim);
+       border-bottom: 2px solid var(--accent);
+       padding-bottom: 4px; margin-top: 2em; }
+  h3 { font-size: 14pt; margin-top: 1.4em; }
+  h4 { font-size: 12pt; margin-top: 1.2em; color: var(--muted); }
+  p { margin: 0.6em 0; }
+  a { color: var(--accent-dim); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Code ──────────────────────────────────────────── */
+  code {
+    font-family: 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    font-size: 9.5pt;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #b91c1c;
+  }
+  pre {
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 9pt;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 6px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    line-height: 1.45;
+    page-break-inside: avoid;
+  }
+  pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+
+  /* ── Tables ────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  th, td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th { background: var(--code-bg); font-weight: 700; }
+  tr:last-child td { border-bottom: none; }
+
+  /* ── Callouts ──────────────────────────────────────── */
+  blockquote {
+    margin: 1em 0;
+    padding: 10px 18px;
+    background: #e8f5ec;
+    border-left: 4px solid var(--accent);
+    border-radius: 4px;
+    color: #14532d;
+  }
+  blockquote p { margin: 0.3em 0; }
+  .warn {
+    background: #fff4e5;
+    border-left-color: #f59e0b;
+    color: #78350f;
+  }
+  .danger {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+    color: #7f1d1d;
+  }
+
+  /* ── Cover page ────────────────────────────────────── */
+  .cover {
+    text-align: center;
+    padding: 120px 0 160px;
+    page-break-after: always;
+  }
+  .cover .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    padding: 4px 14px;
+    border-radius: 999px;
+    font-size: 10pt;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .cover h1 {
+    font-size: 42pt;
+    margin: 20px 0 8px;
+    letter-spacing: -1px;
+  }
+  .cover .sub {
+    font-size: 14pt;
+    color: var(--muted);
+    margin-bottom: 60px;
+  }
+  .cover .meta {
+    font-size: 10pt;
+    color: var(--muted);
+  }
+
+  /* ── TOC ──────────────────────────────────────────── */
+  .toc {
+    page-break-after: always;
+  }
+  .toc ol {
+    list-style: none;
+    padding-left: 0;
+    counter-reset: chap;
+  }
+  .toc ol > li {
+    counter-increment: chap;
+    margin: 6px 0;
+    font-size: 11pt;
+  }
+  .toc ol > li::before {
+    content: counter(chap) ". ";
+    font-weight: 700;
+    color: var(--accent-dim);
+  }
+  .toc ol ol {
+    margin: 4px 0 4px 24px;
+    counter-reset: subchap;
+  }
+  .toc ol ol > li {
+    counter-increment: subchap;
+    font-size: 10pt;
+    color: var(--muted);
+    margin: 2px 0;
+  }
+  .toc ol ol > li::before {
+    content: counter(chap) "." counter(subchap) " ";
+  }
+
+  /* ── Chapters ──────────────────────────────────────── */
+  .chapter {
+    page-break-before: always;
+  }
+  .chapter:first-of-type { page-break-before: auto; }
+
+  /* ── Print overrides ──────────────────────────────── */
+  @media print {
+    body { padding: 0; max-width: none; font-size: 10.5pt; }
+    a { color: var(--fg); text-decoration: none; }
+    pre, table, blockquote { page-break-inside: avoid; }
+    h2, h3 { page-break-after: avoid; }
+    @page {
+      size: A4;
+      margin: 20mm 18mm;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- COVER                                                   -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="cover">
+  <span class="badge">v2.0.0</span>
+  <h1>Modding Guide</h1>
+  <p class="sub">Everything you need to build, ship, and share<br>mods for Modatorial.io</p>
+  <p class="meta">
+    Written by the Modatorial community<br>
+    October 2026 · MIT licensed
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TOC                                                     -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="toc">
+  <h2 style="border: none; margin-bottom: 1em;">Table of Contents</h2>
+  <ol>
+    <li>Introduction
+      <ol><li>What is Modatorial.io?</li><li>What you'll learn</li></ol>
+    </li>
+    <li>Setup
+      <ol><li>Requirements</li><li>Serving locally</li><li>Opening the console</li></ol>
+    </li>
+    <li>Your First Mod
+      <ol><li>The 30-second mod</li><li>The manifest</li><li>Reloading</li></ol>
+    </li>
+    <li>Mod Anatomy
+      <ol><li>mod.json</li><li>main.js</li><li>icon.png</li><li>Subfolders</li></ol>
+    </li>
+    <li>The API
+      <ol><li>Lifecycle</li><li>Events</li><li>Hooks</li><li>UI helpers</li><li>Game access</li><li>File access</li></ol>
+    </li>
+    <li>Deep Internals
+      <ol><li>window.__TT__</li><li>Player arrays</li><li>Map data</li><li>Stability notes</li></ol>
+    </li>
+    <li>Common Recipes
+      <ol><li>Live HUD</li><li>Bot renamer</li><li>Key bindings</li><li>Themes</li><li>Network sniffer</li></ol>
+    </li>
+    <li>Packaging &amp; Publishing
+      <ol><li>.ttmod format</li><li>Uploading to the store</li><li>Versioning</li></ol>
+    </li>
+    <li>Debugging
+      <ol><li>Debug mode</li><li>Reading stack traces</li><li>Common errors</li></ol>
+    </li>
+    <li>Best Practices
+      <ol><li>Cleanup</li><li>Namespacing</li><li>Performance</li><li>Accessibility</li></ol>
+    </li>
+    <li>Appendix A — Full API Reference</li>
+    <li>Appendix B — Full Hook Reference</li>
+    <li>Appendix C — Glossary</li>
+  </ol>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 1                                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>1. Introduction</h2>
+
+<h3>1.1 What is Modatorial.io?</h3>
+<p>
+  Modatorial.io is a client-side modding platform for
+  <a href="https://territorial.io">territorial.io</a>. It runs entirely in
+  your browser, requires zero changes to the original game, and gives mods a
+  stable, well-documented API.
+</p>
+<p>
+  At its core, Modatorial.io is a single JavaScript file
+  (<code>modLoader.js</code>) that wraps four browser APIs the game uses:
+</p>
+<ul>
+  <li><code>WebSocket</code> — to observe and optionally rewrite network traffic</li>
+  <li><code>requestAnimationFrame</code> — to run code before/after each frame</li>
+  <li><code>CanvasRenderingContext2D</code> — to hook into the draw loop</li>
+  <li>DOM events — <code>keydown</code>, <code>mousedown</code>, etc.</li>
+</ul>
+<p>
+  It then exposes a friendly <code>window.TerritorialMods</code> object and
+  reads a set of mods from the <code>mods/</code> folder (or from
+  <code>localStorage</code> for store-installed mods).
+</p>
+
+<h3>1.2 What you'll learn</h3>
+<p>By the end of this guide you'll be able to:</p>
+<ul>
+  <li>Write a mod from scratch in under five minutes</li>
+  <li>Draw on the game canvas, hook into the update loop, and read internal state</li>
+  <li>Package your mod as a <code>.ttmod</code> file</li>
+  <li>Publish it to the community store</li>
+  <li>Debug and profile it like a pro</li>
+</ul>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 2                                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>2. Setup</h2>
+
+<h3>2.1 Requirements</h3>
+<table>
+  <tr><th>Tool</th><th>Why</th></tr>
+  <tr><td>Modern browser</td><td>Chrome 90+, Edge 90+, Firefox 90+, Safari 15+</td></tr>
+  <tr><td>Python 3</td><td>To serve files over HTTP (any static server works)</td></tr>
+  <tr><td>Code editor</td><td>VS Code, Sublime, or anything with JS syntax highlighting</td></tr>
+  <tr><td>DevTools</td><td>Built into every browser (<code>F12</code>)</td></tr>
+</table>
+
+<h3>2.2 Serving locally</h3>
+<p>
+  Browsers refuse to <code>fetch()</code> from <code>file://</code> URLs, so
+  you need a local HTTP server. The simplest:
+</p>
+<pre><code>cd path/to/moddatorial.io
+python3 -m http.server 8000
+# open http://localhost:8000/index.html</code></pre>
+<p>Alternatives:</p>
+<ul>
+  <li><code>npx serve .</code> (Node)</li>
+  <li>VS Code's Live Server extension — right-click <code>index.html</code> → Open with Live Server</li>
+</ul>
+
+<div class="callout warn">
+  <strong>Heads up:</strong> after adding or deleting mods, do a hard reload
+  (<code>Ctrl+Shift+R</code>). Some static servers cache JSON aggressively.
+</div>
+
+<h3>2.3 Opening the console</h3>
+<p>
+  Every browser's DevTools has a Console tab. Open it with <code>F12</code>
+  or <code>Ctrl+Shift+J</code> (Cmd+Opt+J on Mac). This is where the loader
+  logs everything, and where you'll paste one-off scripts.
+</p>
+<p>Filter the console to only your mod's output:</p>
+<pre><code>// In the console:
+TerritorialMods.debug = true;</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 3                                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>3. Your First Mod</h2>
+
+<h3>3.1 The 30-second mod</h3>
+<p>Create this folder tree inside your project:</p>
+<pre><code>mods/
+└── hello-world/
+    ├── mod.json
+    └── main.js</code></pre>
+
+<p><strong>mods/hello-world/mod.json</strong></p>
+<pre><code>{
+  "name": "Hello World",
+  "version": "1.0.0",
+  "author": "You",
+  "description": "Shows a toast on load.",
+  "main": "main.js"
+}</code></pre>
+
+<p><strong>mods/hello-world/main.js</strong></p>
+<pre><code>api.showToast('Hello, world!');</code></pre>
+
+<h3>3.2 The manifest</h3>
+<p>
+  The loader reads <code>mods/manifest.json</code> to know which folders to
+  scan. Add your mod's folder name to the array:
+</p>
+<pre><code>{
+  "mods": [
+    "hello-world"
+  ]
+}</code></pre>
+<p>
+  Order matters: mods are loaded top-to-bottom, but the dependency solver
+  will reorder them if needed (see §8).
+</p>
+
+<h3>3.3 Reloading</h3>
+<p>Hard-reload the page. You should see:</p>
+<pre><code>[ModLoader] Loaded: Hello World (hello-world) v1.0.0
+[ModLoader] Done. 1 mod(s). Click "Mods" or press F10.</code></pre>
+<p>
+  And a toast should pop up at the bottom of the screen saying
+  <em>Hello, world!</em>
+</p>
+<p>
+  If nothing happens, open the console and look for red text. The most common
+  cause is a missing comma in the JSON — the console will tell you the exact
+  line.
+</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 4                                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>4. Mod Anatomy</h2>
+
+<h3>4.1 mod.json</h3>
+<p>The full schema, with every field:</p>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+  <tr><td>name</td><td>string</td><td>yes</td><td>Display name, ≤ 40 chars</td></tr>
+  <tr><td>version</td><td>string</td><td>yes</td><td>Semver, e.g. <code>1.0.0</code></td></tr>
+  <tr><td>author</td><td>string</td><td>yes</td><td>Credit line</td></tr>
+  <tr><td>description</td><td>string</td><td>no</td><td>≤ 200 chars for clean cards</td></tr>
+  <tr><td>icon</td><td>string</td><td>no</td><td>Path inside mod folder</td></tr>
+  <tr><td>main</td><td>string | false</td><td>no</td><td>JS entry point</td></tr>
+  <tr><td>gameVersion</td><td>number</td><td>no</td><td>Matches <code>rXX</code> the game prints</td></tr>
+  <tr><td>enabled</td><td>bool</td><td>no</td><td>Default <code>true</code></td></tr>
+  <tr><td>requires</td><td>string[]</td><td>no</td><td>Hard dependencies</td></tr>
+  <tr><td>optionalDeps</td><td>string[]</td><td>no</td><td>Soft dependencies</td></tr>
+  <tr><td>conflictsWith</td><td>string[]</td><td>no</td><td>Loader skips if any are enabled</td></tr>
+  <tr><td>minimumClientVersion</td><td>string</td><td>no</td><td>Loader refuses to run below this</td></tr>
+  <tr><td>compatibleGameVersions</td><td>number[]</td><td>no</td><td>Warns if mismatched</td></tr>
+  <tr><td>tags</td><td>string[]</td><td>no</td><td>Used by store filtering</td></tr>
+  <tr><td>homepage</td><td>string</td><td>no</td><td>URL shown on card</td></tr>
+  <tr><td>license</td><td>string</td><td>no</td><td>SPDX identifier</td></tr>
+</table>
+
+<h3>4.2 main.js</h3>
+<p>
+  The loader wraps <code>main.js</code> in a function that receives two
+  arguments: <code>api</code> and <code>mod</code>.
+</p>
+<pre><code>(function (api, mod) {
+  "use strict";
+
+  // Your code here.
+  // `api` is the shared window.TerritorialMods object.
+  // `mod` is this mod's metadata (with .basePath and .config).
+
+})(window.TerritorialMods, /* your meta */);</code></pre>
+<p>
+  You can <code>return</code> an object at the end — that becomes
+  <code>mod.exports</code>, readable by dependent mods.
+</p>
+
+<h3>4.3 icon.png</h3>
+<p>
+  Optional. Square, ≥ 256×256, PNG or WebP. If omitted, the store uses a
+  neutral placeholder.
+</p>
+
+<h3>4.4 Subfolders</h3>
+<p>
+  Any file inside your mod folder is accessible via
+  <code>api.readModFile(mod, path)</code>. Paths are relative to your mod
+  root and use forward slashes on every OS.
+</p>
+<pre><code>const sound = await api.readModFile(mod, 'assets/ding.ogg', 'blob');</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 5                                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>5. The API</h2>
+
+<h3>5.1 Lifecycle</h3>
+<pre><code>api.version            // "2.0.0"
+api.gameVersion        // 25
+api.mods               // Map&lt;id, meta&gt;
+api.self               // this mod's meta</code></pre>
+
+<h3>5.2 Events</h3>
+<p>A tiny publish/subscribe system.</p>
+<pre><code>const off = api.on('event-name', handler);
+off();                             // unsubscribe
+api.off('event-name', handler);    // same
+api.emit('event-name', 1, 2, 3);   // fire custom</code></pre>
+<p>Built-in events: <code>modLoaded</code>, <code>modsLoaded</code>,
+<code>ready</code>, plus raw DOM events forwarded verbatim.</p>
+
+<h3>5.3 Hooks</h3>
+<p>
+  Hooks are called <em>by the game</em>. Register with
+  <code>api.addHook(name, fn)</code>. See Appendix B for the full list.
+</p>
+<pre><code>api.addHook('preRender', ctx =&gt; {
+  ctx.fillStyle = 'red';
+  ctx.fillRect(0, 0, 20, 20);
+});</code></pre>
+
+<h3>5.4 UI helpers</h3>
+<pre><code>api.showToast('msg', 3000);
+const btn = api.addButton('⚔ Attack', () =&gt; doAttack());
+api.addStyle('.my-thing { color: red; }');
+const el = api.createElement('div', { class: 'x' }, 'Hello');
+api.mountChrome({ id: 'my-widget', render: () =&gt; node });</code></pre>
+
+<h3>5.5 Game access</h3>
+<pre><code>api.getGameCanvas()    // &lt;canvas id="canvasA"&gt;
+api.getGameContext()   // its 2D context
+api.getGameSize()      // { width, height }
+api.isInLobby()        // boolean
+api.isInGame()         // boolean
+api.getPlayerName()    // string
+api.getPlayerColor()   // "#rrggbb"
+api.getPlayerIndex()   // number
+api.getPlayerCount()   // number
+api.getHumanCount()    // number
+api.getLeaderboard()   // [{ name, color, territory, rank }]</code></pre>
+
+<h3>5.6 File access</h3>
+<pre><code>const txt  = await api.readModFile(mod, 'notes.txt');
+const json = await api.readModFile(mod, 'config.json', 'json');
+const img  = await api.readModFile(mod, 'icon.png',    'image');
+const blob = await api.readModFile(mod, 'sound.ogg',   'blob');</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 6                                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>6. Deep Internals</h2>
+
+<h3>6.1 window.__TT__</h3>
+<p>
+  For advanced mods, the loader exposes a read-mostly view of the game's
+  own closure variables:
+</p>
+<pre><code>const TT = api.getGame();
+// TT.ah  — per-player arrays (names, colors, scores)
+// TT.aE  — game state ({ data, fJ, fW, ku, a2G })
+// TT.ad  — map / territory data
+// TT.aj  — name generator (has .a8() method)
+// TT.bm  — buffer / settings
+// TT.ac  — image cache
+// TT.b1  — network manager
+// TT.bD  — UI utilities
+// TT.aT  — ranking</code></pre>
+
+<h3>6.2 Player arrays</h3>
+<table>
+  <tr><th>Path</th><th>Meaning</th></tr>
+  <tr><td><code>ah.a0j[i]</code></td><td>Player i's display name</td></tr>
+  <tr><td><code>ah.a2w[i]</code></td><td>Player i's name (secondary, tag)</td></tr>
+  <tr><td><code>ah.nU[i]</code></td><td>Is player i alive (1) or empty (0)?</td></tr>
+  <tr><td><code>ah.a5a[i]</code></td><td>Player i's status (0=human, 2=bot)</td></tr>
+  <tr><td><code>ah.a2Z[i]</code></td><td>Player i's kill count</td></tr>
+  <tr><td><code>aE.fJ</code></td><td>Local player's index</td></tr>
+  <tr><td><code>aE.ku</code></td><td>How many players are human</td></tr>
+  <tr><td><code>aE.fW</code></td><td>Total player slots</td></tr>
+</table>
+
+<h3>6.3 Map data</h3>
+<p>
+  <code>TT.ad</code> holds the territory grid. It's a flat
+  <code>Uint16Array</code> of owner indices. The map is
+  <code>ad.j</code> wide by <code>ad.k</code> tall.
+</p>
+<pre><code>const { ad } = api.getGame();
+const w = ad.j, h = ad.k;
+const ownerAt = (x, y) =&gt; ad.a3V[y * w + x];</code></pre>
+
+<div class="callout warn">
+  <strong>Stability:</strong> these internals are undocumented and may change
+  without warning when territorial.io updates. Wrap access in
+  <code>try/catch</code> and guard with feature detection.
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 7                                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>7. Common Recipes</h2>
+
+<h3>7.1 Live HUD</h3>
+<pre><code>let fps = 0, frames = 0, last = performance.now();
+
+api.addHook('postUpdate', () =&gt; {
+  frames++;
+  const now = performance.now();
+  if (now - last &gt;= 1000) { fps = frames; frames = 0; last = now; }
+});
+
+api.addHook('preRender', ctx =&gt; {
+  ctx.save();
+  ctx.font = 'bold 16px system-ui';
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(8, 8, 90, 28);
+  ctx.fillStyle = '#3fb950';
+  ctx.fillText(`${fps} FPS`, 16, 28);
+  ctx.restore();
+});</code></pre>
+
+<h3>7.2 Bot renamer</h3>
+<pre><code>const NAMES = ['bob', 'john', 'ur mom', 'zack', 'bobir'];
+
+function tryPatch() {
+  const TT = window.__TT__;
+  if (!TT || !TT.aj || TT.aj.__patched) return !!TT?.aj?.__patched;
+
+  const orig = TT.aj.a8.bind(TT.aj);
+  TT.aj.a8 = function () {
+    orig();
+    const { ah, aE } = TT;
+    if (!ah || !aE) return;
+    for (let i = aE.ku; i &lt; aE.fW; i++) {
+      if (ah.nU[i] === 0) continue;
+      const n = NAMES[i % NAMES.length];
+      ah.a0j[i] = n; ah.a2w[i] = n;
+    }
+  };
+  TT.aj.__patched = true;
+  return true;
+}
+
+if (!tryPatch()) {
+  const iv = setInterval(() =&gt; { if (tryPatch()) clearInterval(iv); }, 100);
+}</code></pre>
+
+<h3>7.3 Key bindings</h3>
+<pre><code>api.addHook('keyDown', e =&gt; {
+  if (e.target.tagName === 'INPUT') return;  // don't hijack typing
+  if (e.code === 'KeyG') { api.showToast('GG!'); }
+});</code></pre>
+
+<h3>7.4 Themes</h3>
+<pre><code>api.addStyle(`
+  :root {
+    --accent: #ff00aa;
+    --background: #050010;
+    --text: #ffffff;
+  }
+`);</code></pre>
+
+<h3>7.5 Network sniffer</h3>
+<pre><code>api.addHook('netSend', (data, ws, url) =&gt; {
+  console.debug('[sniff] →', data.byteLength ?? data.length, 'bytes to', url);
+});
+api.addHook('netRecv', (data, ws, url) =&gt; {
+  console.debug('[sniff] ←', data.byteLength ?? data.length, 'bytes from', url);
+});</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 8                                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>8. Packaging &amp; Publishing</h2>
+
+<h3>8.1 The .ttmod format</h3>
+<p>A single-file, text-based, human-readable bundle:</p>
+<pre><code>&lt;ttmod&gt;
+{ "name": "My Mod", "version": "1.0.0", "author": "You" }
+&lt;/ttmod&gt;
+&lt;script&gt;
+api.showToast('hi');
+&lt;/script&gt;
+&lt;assets&gt;
+{"icon.png": "data:image/png;base64,..."}
+&lt;/assets&gt;</code></pre>
+
+<h3>8.2 Uploading to the store</h3>
+<pre><code>await ModStore.publish({
+  name:        'My Mod',
+  author:      'You',
+  description: 'Does something cool.',
+  version:     '1.0.0',
+  icon:        null,
+  ttmod:       ttmodText,
+  tags:        ['hud']
+});</code></pre>
+<p>
+  Uploads are rate-limited to 10 per hour per browser fingerprint.
+</p>
+
+<h3>8.3 Versioning</h3>
+<p>
+  Always bump <code>version</code> when you publish. The store deduplicates
+  by <code>name + author</code> and keeps the highest version. Old versions
+  remain queryable in Firestore for rollback.
+</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 9                                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>9. Debugging</h2>
+
+<h3>9.1 Debug mode</h3>
+<pre><code>TerritorialMods.debug = true;</code></pre>
+<p>Verbose logs every hook and event dispatch.</p>
+
+<h3>9.2 Reading stack traces</h3>
+<p>
+  Each mod's script is loaded with a <code>//# sourceURL=</code> comment, so
+  DevTools shows the mod's real path in stack traces. Example:
+</p>
+<pre><code>Uncaught TypeError: ctx.filTtext is not a function
+    at mods/kill-counter/main.js:14</code></pre>
+
+<h3>9.3 Common errors</h3>
+<table>
+  <tr><th>Symptom</th><th>Likely cause</th></tr>
+  <tr><td>Mod card shows in menu but nothing runs</td><td>Missing from <code>manifest.json</code> or a JS syntax error</td></tr>
+  <tr><td>404 on <code>mod.json</code></td><td>Folder name mismatch, or server needs restart</td></tr>
+  <tr><td><code>Cannot read property 'x' of undefined</code></td><td>You accessed <code>api.getGame()</code> before the game finished loading</td></tr>
+  <tr><td>Hook fires zero times</td><td>The hook doesn't run in the current game state (e.g. <code>preRender</code> on the menu)</td></tr>
+  <tr><td>Style doesn't apply</td><td>CSS variables overridden later — add <code>!important</code> or use a higher-specificity selector</td></tr>
+</table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- CH 10                                                   -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>10. Best Practices</h2>
+
+<h3>10.1 Cleanup</h3>
+<p>
+  Any timer or listener you create should be torn down when the mod is
+  unloaded. The loader auto-cleans hooks and <code>api.on</code>
+  subscriptions, but <code>setInterval</code> and raw
+  <code>addEventListener</code> are your responsibility:
+</p>
+<pre><code>const iv = setInterval(tick, 1000);
+api.on('unload', () =&gt; clearInterval(iv));</code></pre>
+
+<h3>10.2 Namespacing</h3>
+<p>
+  Prefix CSS classes and localStorage keys with your mod ID:
+</p>
+<pre><code>api.addStyle('.killcounter-panel { ... }');
+localStorage.setItem('tt-mod:kill-counter:best', '12');</code></pre>
+
+<h3>10.3 Performance</h3>
+<ul>
+  <li>Don't do heavy work in <code>preUpdate</code>/<code>postUpdate</code> —
+    they run at 60 Hz. Throttle to every Nth frame if needed.</li>
+  <li>Cache <code>api.getGame()</code> results; don't call it every frame.</li>
+  <li>Batch canvas state: <code>ctx.save()</code> / <code>ctx.restore()</code>
+    around every draw block.</li>
+</ul>
+
+<h3>10.4 Accessibility</h3>
+<ul>
+  <li>Respect <code>prefers-reduced-motion</code>.</li>
+  <li>Don't hijack keyboard input when the target is an
+    <code>&lt;input&gt;</code>.</li>
+  <li>Use semantic HTML in mod UI panels.</li>
+</ul>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- APPENDIX A                                              -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>Appendix A — Full API Reference</h2>
+<table>
+  <tr><th>Method</th><th>Returns</th><th>Description</th></tr>
+  <tr><td><code>api.on(evt, fn)</code></td><td>off fn</td><td>Subscribe to event</td></tr>
+  <tr><td><code>api.off(evt, fn)</code></td><td>void</td><td>Unsubscribe</td></tr>
+  <tr><td><code>api.emit(evt, ...args)</code></td><td>void</td><td>Fire custom event</td></tr>
+  <tr><td><code>api.addHook(name, fn)</code></td><td>void</td><td>Register game hook</td></tr>
+  <tr><td><code>api.showToast(msg, ms)</code></td><td>void</td><td>Bottom toast</td></tr>
+  <tr><td><code>api.addButton(text, cb, style)</code></td><td>HTMLButtonElement</td><td>Fixed button</td></tr>
+  <tr><td><code>api.addStyle(css)</code></td><td>void</td><td>Inject CSS</td></tr>
+  <tr><td><code>api.createElement(tag, attrs, ...kids)</code></td><td>HTMLElement</td><td>Preset element</td></tr>
+  <tr><td><code>api.mountChrome({ id, render })</code></td><td>void</td><td>Chrome bar widget</td></tr>
+  <tr><td><code>api.getGameCanvas()</code></td><td>HTMLCanvasElement</td><td>Game canvas</td></tr>
+  <tr><td><code>api.getGameContext()</code></td><td>CanvasRenderingContext2D</td><td>2D context</td></tr>
+  <tr><td><code>api.getGameSize()</code></td><td>{width, height}</td><td>Canvas size</td></tr>
+  <tr><td><code>api.isInLobby()</code></td><td>boolean</td><td>Lobby visible?</td></tr>
+  <tr><td><code>api.isInGame()</code></td><td>boolean</td><td>Match running?</td></tr>
+  <tr><td><code>api.getPlayerName()</code></td><td>string</td><td>Your display name</td></tr>
+  <tr><td><code>api.getPlayerColor()</code></td><td>string</td><td>#rrggbb</td></tr>
+  <tr><td><code>api.getPlayerIndex()</code></td><td>number</td><td>Your slot</td></tr>
+  <tr><td><code>api.getPlayerCount()</code></td><td>number</td><td>Total slots</td></tr>
+  <tr><td><code>api.getHumanCount()</code></td><td>number</td><td>Human players</td></tr>
+  <tr><td><code>api.getLeaderboard()</code></td><td>Array</td><td>Ranked players</td></tr>
+  <tr><td><code>api.getGame()</code></td><td>Object</td><td>window.__TT__</td></tr>
+  <tr><td><code>api.readModFile(mod, path, as)</code></td><td>Promise</td><td>Load mod asset</td></tr>
+  <tr><td><code>api.log/warn/error(...args)</code></td><td>void</td><td>Scoped logging</td></tr>
+</table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- APPENDIX B                                              -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>Appendix B — Full Hook Reference</h2>
+<table>
+  <tr><th>Hook</th><th>Args</th><th>Fires</th></tr>
+  <tr><td><code>preUpdate</code></td><td><code>t</code></td><td>Before each rAF callback</td></tr>
+  <tr><td><code>postUpdate</code></td><td><code>t</code></td><td>After each rAF callback</td></tr>
+  <tr><td><code>preRender</code></td><td><code>ctx</code></td><td>Before each drawImage</td></tr>
+  <tr><td><code>postRender</code></td><td><code>ctx</code></td><td>After each drawImage</td></tr>
+  <tr><td><code>netSend</code></td><td><code>data, ws, url</code></td><td>Before ws.send()</td></tr>
+  <tr><td><code>netRecv</code></td><td><code>data, ws, url</code></td><td>After message received</td></tr>
+  <tr><td><code>keyDown</code></td><td><code>KeyboardEvent</code></td><td>Any key pressed</td></tr>
+  <tr><td><code>keyUp</code></td><td><code>KeyboardEvent</code></td><td>Any key released</td></tr>
+  <tr><td><code>mouseDown</code></td><td><code>MouseEvent</code></td><td>Mouse button down</td></tr>
+  <tr><td><code>mouseUp</code></td><td><code>MouseEvent</code></td><td>Mouse button up</td></tr>
+  <tr><td><code>mouseMove</code></td><td><code>MouseEvent</code></td><td>Mouse moved</td></tr>
+  <tr><td><code>wheel</code></td><td><code>WheelEvent</code></td><td>Scroll</td></tr>
+  <tr><td><code>touchStart</code></td><td><code>TouchEvent</code></td><td>Touch begin</td></tr>
+  <tr><td><code>touchEnd</code></td><td><code>TouchEvent</code></td><td>Touch end</td></tr>
+</table>
+</section>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- APPENDIX C                                              -->
+<!-- ══════════════════════════════════════════════════════ -->
+<section class="chapter">
+<h2>Appendix C — Glossary</h2>
+<table>
+  <tr><th>Term</th><th>Meaning</th></tr>
+  <tr><td><b>Loader</b></td><td>The script (<code>modLoader.js</code>) that patches browser APIs and manages mods</td></tr>
+  <tr><td><b>Hook</b></td><td>A function that runs at a specific point in the game loop</td></tr>
+  <tr><td><b>Event</b></td><td>A user-defined publish/subscribe message</td></tr>
+  <tr><td><b>Mod</b></td><td>A folder (or <code>.ttmod</code> file) with <code>mod.json</code> + <code>main.js</code></td></tr>
+  <tr><td><b>Manifest</b></td><td><code>mods/manifest.json</code> — the list of enabled folder mods</td></tr>
+  <tr><td><b>.ttmod</b></td><td>A single-file text bundle (metadata + script + assets)</td></tr>
+  <tr><td><b>Chrome bar</b></td><td>The floating toolbar at the top of the screen</td></tr>
+  <tr><td><b>Store</b></td><td>The Firestore-backed community mod marketplace</td></tr>
+  <tr><td><b>Deep internals</b></td><td><code>window.__TT__</code> — a peek into the game's own closure</td></tr>
+</table>
+
+<p style="margin-top: 3em; text-align: center; color: var(--muted); font-size: 10pt;">
+  <strong>End of guide.</strong><br>
+  Thanks for reading. Now go build something cool. 💚
+</p>
+</section>
+
+</body>
+</html>

@@ -1,58 +1,590 @@
-<ttmod>
-{
-  "id": "coolplayer",
-  "name": "Cool Player Pack",
-  "version": "1.1.0",
-  "author": "Pakball13",
-  "description": "Name, color, font, flags, music, and a Discord button — all in one file.",
+/* ============================================================
+ * ttmod-translator.js  —  Mystery Buff v3 (patched)
+ * .ttmod v3: <ttmod>JSON</ttmod> + optional <script>
+ * 43+ declarative config options
+ *
+ * Patch note: genFpsClock now returns early if #tt-hud exists,
+ * preventing stacked HUDs when the same ttmod loads twice.
+ * ============================================================ */
+(function (global) {
+  'use strict';
 
-  "config": {
-    "userName":        "CoolPlayer",
-    "userColor":       "#00ff88",
-    "font":            "Inter, system-ui",
-    "flags":           ["🇵🇰", "🔥"],
+  const TT_PFX   = '%c[Ttmod]';
+  const TT_STYLE = 'color:#c9f;font-weight:bold';
+  const log  = (...a) => console.log  (TT_PFX, TT_STYLE, ...a);
+  const warn = (...a) => console.warn (TT_PFX, TT_STYLE, ...a);
 
-    "theme": { "accent": "#00ff88" },
-    "presetColors": ["#00ff88", "#ff5577", "#4488ff", "#ffaa00"],
+  const FORMAT_VERSION = 3;
 
-    "layout":           "sidebar",
-    "sidebarCollapsed": false,
-
-    "hideMultiplayer": true,
-    "hideVersion":     true,
-    "hideLogo":        true,
-    "hideMenuButtons": ["Logs", "Clan Charts"],
-
-    "showFps":    true,
-    "showClock":  true,
-    "clockFormat":"24h",
-
-    "watermark":         "CoolPlayer · Modatorial.io",
-    "watermarkPosition": "bottom-right",
-
-    "statusBar": "🎮 Cool Player Pack v1.1.0 · loaded",
-
-    "startupMessage": "Welcome, CoolPlayer! 🎉",
-    "cursor":         "crosshair",
-
-    "musicVolume": 0.3,
-
-    "buttons": [
-      { "label": "💬 Discord", "url": "https://discord.gg/example" },
-      { "label": "🎨 Color",   "toast": "Accent is set to green!" }
-    ],
-
-    "quickMessages": [
-      { "text": "GG!",  "key": "KeyG" },
-      { "text": "Nice","key": "KeyN" }
-    ],
-
-    "confirmExit":    true,
-    "autoSkipSplash": false
+  /* ============================================================
+   * PARSER
+   * ============================================================ */
+  function parseTtmod(source) {
+    if (typeof source !== 'string') throw new Error('ttmod: source must be string');
+    const tm = source.match(/<ttmod[^>]*>([\s\S]*?)<\/ttmod>/i);
+    if (!tm) throw new Error('ttmod: missing <ttmod>…</ttmod>');
+    let meta;
+    try { meta = JSON.parse(tm[1].trim()); }
+    catch (e) { throw new Error('ttmod: JSON invalid — ' + e.message); }
+    const sm = source.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+    const userScript = sm ? sm[1].trim() : '';
+    if (!meta.id || typeof meta.id !== 'string') throw new Error('ttmod: missing "id"');
+    meta.format        = 'ttmod';
+    meta.formatVersion = meta.formatVersion || FORMAT_VERSION;
+    return { meta, userScript };
   }
-}
-</ttmod>
-<script>
-// Anything complicated goes here — full api.* access.
-api.log('Cool Player script running');
-</script>
+
+  /* ============================================================
+   * GENERATORS
+   * ============================================================ */
+
+  function genStartupMessage(cfg) {
+    if (!cfg.startupMessage) return '';
+    return `api.showToast(${JSON.stringify(String(cfg.startupMessage))}, 3500);`;
+  }
+
+  function genUserName(cfg) {
+    if (!cfg.userName) return '';
+    const name = String(cfg.userName).slice(0, 20);
+    return `
+try {
+  const TT = window.__TT__;
+  if (TT && TT.bm) TT.bm.qo.qp(122, ${JSON.stringify(name)});
+} catch (e) { api.warn('userName failed', e); }`;
+  }
+
+  function genUserColor(cfg) {
+    if (!cfg.userColor) return '';
+    const hex = String(cfg.userColor);
+    return `
+try {
+  const TT = window.__TT__;
+  const m = /^#?([0-9a-f]{6})$/i.exec(${JSON.stringify(hex)});
+  if (m && TT && TT.bm) {
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 0xFF, g = (n >> 8) & 0xFF, b = n & 0xFF;
+    const packed = ((r >> 2) << 12) | ((g >> 2) << 6) | (b >> 2);
+    TT.bm.qo.qp(121, packed);
+  }
+} catch (e) { api.warn('userColor failed', e); }`;
+  }
+
+  function genFlags(cfg) {
+    if (!Array.isArray(cfg.flags) || !cfg.flags.length) return '';
+    const flags = cfg.flags.map(f => String(f).slice(0, 4)).join(' ');
+    return `
+(function(){
+  const TT = window.__TT__;
+  if (!TT || !TT.bm || !TT.bm.buffer) return;
+  const flagStr = ' ' + ${JSON.stringify(flags)};
+  const box = TT.bm.buffer.data[122];
+  if (!box || typeof box.value !== 'string') return;
+  if (!box.value.endsWith(flagStr)) {
+    TT.bm.qo.qp(122, (box.value + flagStr).slice(0, 20));
+  }
+})();`;
+  }
+
+  function genFont(cfg) {
+    if (!cfg.font) return '';
+    return `
+try {
+  document.body.style.fontFamily = ${JSON.stringify(cfg.font)};
+  document.documentElement.style.setProperty('--tt-font', ${JSON.stringify(cfg.font)});
+  const TT = window.__TT__;
+  if (TT && TT.bm) TT.bm.qo.qp(5, ${JSON.stringify(cfg.font)});
+} catch (e) { api.warn('font failed', e); }`;
+  }
+
+  function genTheme(cfg) {
+    const theme = cfg.theme || {};
+    const cssVars = Object.entries(theme)
+      .map(([k, v]) => `--tt-${k}: ${v};`).join(' ');
+
+    const preset = Array.isArray(cfg.presetColors)
+      ? `
+  try {
+    const TT = window.__TT__;
+    if (TT && TT.bm) {
+      const arr = ${JSON.stringify(cfg.presetColors)};
+      const s = arr.map(c => {
+        const m = /^#?([0-9a-f]{6})$/i.exec(c);
+        if (!m) return 0;
+        const n = parseInt(m[1], 16);
+        return (((n >> 18) & 63) << 12) | (((n >> 10) & 63) << 6) | ((n >> 2) & 63);
+      }).join(',');
+      TT.bm.qo.qp(120, s);
+    }
+  } catch (e) { api.warn('presetColors failed', e); }` : '';
+
+    const css = cfg.customCss ? String(cfg.customCss) : '';
+    const bgColor = cfg.theme && cfg.theme.background;
+    const bgColorJs = bgColor
+      ? `document.documentElement.style.setProperty('background-color', ${JSON.stringify(bgColor)});`
+      : '';
+
+    if (!cssVars && !preset && !css && !bgColor) return '';
+    return `
+try {
+  const s = document.createElement('style');
+  s.dataset.ttmod = 'theme';
+  s.textContent = \`
+    :root { ${cssVars} }
+    #tt-chrome #tt-brand-badge { background: var(--tt-accent, #2b6a2b) !important; }
+    #tt-chrome button:hover { color: var(--tt-accent, #e8eaf0) !important; }
+    body > button[data-tt-menu-btn="1"]:hover {
+      box-shadow:
+        0 6px 22px var(--tt-accent, rgba(255,255,255,.18)),
+        0 0 40px -8px var(--tt-accent, rgba(255,255,255,.35)),
+        inset 0 1px 0 rgba(255,255,255,.35) !important;
+    }
+    ${css}
+  \`;
+  document.head.appendChild(s);
+  ${bgColorJs}
+  ${preset}
+} catch (e) { api.warn('theme failed', e); }`;
+  }
+
+  function genLayout(cfg) {
+    const bits = [];
+    if (cfg.layout) bits.push(`api.setLayout(${JSON.stringify(String(cfg.layout))});`);
+    if (typeof cfg.sidebarCollapsed === 'boolean') {
+      bits.push(`api.setSidebarCollapsed(${!!cfg.sidebarCollapsed});`);
+    }
+    if (!bits.length) return '';
+    return `
+setTimeout(() => {
+  try {
+    ${bits.join('\n    ')}
+  } catch (e) { api.warn('layout failed', e); }
+}, 400);`;
+  }
+
+  function genHideFlags(cfg) {
+    const calls = [];
+    if (cfg.hideMultiplayer) calls.push('api.setHideMultiplayer(true);');
+    if (cfg.hideVersion)     calls.push('api.setHideVersion(true);');
+    if (cfg.hideLogo)        calls.push('api.setHideLogo(true);');
+    if (Array.isArray(cfg.hideMenuButtons) && cfg.hideMenuButtons.length) {
+      calls.push(`api.setHideMenuButtons(true);`);
+    }
+    if (!calls.length) return '';
+    return `
+setTimeout(() => {
+  try {
+    ${calls.join('\n    ')}
+  } catch (e) { api.warn('hide toggles failed', e); }
+}, 300);`;
+  }
+
+  function genPanorama(cfg, meta) {
+    if (!cfg.panorama) return '';
+    let src = cfg.panorama;
+    if (meta.assets && meta.assets[src]) src = meta.assets[src];
+    return `
+(function(){
+  const src = ${JSON.stringify(src)};
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    api.setMenuBackground((g, W, H) => {
+      if (!api.isInLobby()) return;
+      const aspect = img.width / img.height;
+      const dst = W / H;
+      let dw, dh;
+      if (aspect >= dst) { dh = H; dw = H * aspect; }
+      else               { dw = W; dh = W / aspect; }
+      const speed = ${Number(cfg.panoramaSpeed) || 0.00005};
+      const t = performance.now() * speed;
+      const scroll = (dw - W) * (0.5 + 0.5 * Math.sin(t));
+      g.save();
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.imageSmoothingEnabled = true;
+      g.drawImage(img, -scroll, (H - dh) / 2, dw, dh);
+      g.fillStyle = 'rgba(0,0,0,${Number(cfg.panoramaDim) ?? 0.3})';
+      g.fillRect(0, 0, W, H);
+      g.restore();
+    });
+  };
+  img.onerror = () => api.warn('panorama failed: ' + src);
+  img.src = src;
+})();`;
+  }
+
+  function genWatermark(cfg) {
+    if (!cfg.watermark) return '';
+    const text  = String(cfg.watermark).slice(0, 120);
+    const pos   = String(cfg.watermarkPosition || 'bottom-right');
+    const color = String(cfg.watermarkColor || 'rgba(255,255,255,0.45)');
+    const size  = Number(cfg.watermarkSize) || 12;
+    const posCss = ({
+      'top-left':      'top:10px;left:12px;',
+      'top-right':     'top:10px;right:12px;',
+      'bottom-left':   'bottom:32px;left:12px;',
+      'bottom-right':  'bottom:32px;right:12px;'
+    })[pos] || 'bottom:32px;right:12px;';
+    return `
+(function(){
+  const existing = document.getElementById('tt-watermark');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'tt-watermark';
+  el.textContent = ${JSON.stringify(text)};
+  el.style.cssText = 'position:fixed;${posCss}z-index:9;pointer-events:none;' +
+    'font:600 ${size}px system-ui;color:${color};text-shadow:0 1px 2px rgba(0,0,0,.5);';
+  document.body.appendChild(el);
+})();`;
+  }
+
+  /* ---- FPS / clock HUD (patched — never stacks) ---- */
+  function genFpsClock(cfg) {
+    const showFps   = !!cfg.showFps;
+    const showClock = !!cfg.showClock;
+    if (!showFps && !showClock) return '';
+    const fmt = cfg.clockFormat === '12h' ? '12h' : '24h';
+    return `
+(function(){
+  // ---- dedup guard: only one HUD per page ----
+  if (document.getElementById('tt-hud')) return;
+
+  const el = document.createElement('div');
+  el.id = 'tt-hud';
+  el.style.cssText = 'position:relative;pointer-events:none;' +
+    'font:600 12px system-ui;color:rgba(255,255,255,0.75);text-align:right;' +
+    'text-shadow:0 1px 2px rgba(0,0,0,0.6);line-height:1.4;' +
+    'background:rgba(0,0,0,0.35);padding:4px 8px;border-radius:6px;';
+  if (window.TerritorialMods && typeof window.TerritorialMods.addToTopRight === 'function') {
+    window.TerritorialMods.addToTopRight(el);
+  } else {
+    el.style.position = 'fixed';
+    el.style.top = '12px';
+    el.style.right = '12px';
+    el.style.zIndex = '9';
+    document.body.appendChild(el);
+  }
+
+  let last = performance.now(), frames = 0, fps = 0;
+  api.addHook('postUpdate', () => {
+    frames++;
+    const now = performance.now();
+    if (now - last >= 1000) { fps = frames; frames = 0; last = now; }
+    const parts = [];
+    if (${showFps})   parts.push(fps + ' fps');
+    if (${showClock}) {
+      const d = new Date();
+      let h = d.getHours(), m = d.getMinutes();
+      let suffix = '';
+      if ('${fmt}' === '12h') {
+        suffix = h >= 12 ? ' PM' : ' AM';
+        h = h % 12 || 12;
+      }
+      parts.push(h + ':' + (m < 10 ? '0' : '') + m + suffix);
+    }
+    el.textContent = parts.join('   ');
+  });
+})();`;
+  }
+
+  function genCursor(cfg) {
+    if (!cfg.cursor) return '';
+    const c = String(cfg.cursor);
+    const allowed = ['default', 'crosshair', 'pointer', 'grab', 'grabbing', 'move', 'cell', 'none'];
+    const safe = allowed.includes(c) ? c : 'crosshair';
+    return `document.body.style.cursor = ${JSON.stringify(safe)};`;
+  }
+
+  function genButtons(cfg) {
+    if (!Array.isArray(cfg.buttons) || !cfg.buttons.length) return '';
+    const snippet = cfg.buttons.map((b, i) => {
+      const label = String(b.label || ('Button ' + i)).slice(0, 32);
+      let body;
+      if (b.url)               body = `window.open(${JSON.stringify(String(b.url))}, '_blank');`;
+      else if (b.toast)        body = `api.showToast(${JSON.stringify(String(b.toast))});`;
+      else if (b.action === 'reload')     body = `location.reload();`;
+      else if (b.action === 'toggleMods') body = `document.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10' }));`;
+      else                     body = `api.log('button "${label}" clicked');`;
+      return `api.addButton(${JSON.stringify(label)}, () => { ${body} });`;
+    }).join('\n  ');
+    return `
+try {
+  ${snippet}
+} catch (e) { api.warn('buttons failed', e); }`;
+  }
+
+  function genKeybinds(cfg) {
+    if (!cfg.keybinds || typeof cfg.keybinds !== 'object') return '';
+    const entries = Object.entries(cfg.keybinds);
+    if (!entries.length) return '';
+    const code = entries.map(([action, key]) =>
+      `${JSON.stringify(action)}: ${JSON.stringify(String(key))}`).join(',');
+    return `
+(function(){
+  const map = { ${code} };
+  api.addHook('keyDown', e => {
+    for (const [act, key] of Object.entries(map)) {
+      if (e.code === key || e.key === key) {
+        api.emit('ttmod:key', act, e);
+        api.log('keybind hit:', act);
+      }
+    }
+  });
+})();`;
+  }
+
+  function genQuickMessages(cfg) {
+    if (!Array.isArray(cfg.quickMessages) || !cfg.quickMessages.length) return '';
+    const list = cfg.quickMessages.slice(0, 9).map((m, i) => ({
+      text: String(typeof m === 'string' ? m : m.text || '').slice(0, 100),
+      key:  String(typeof m === 'object' && m.key ? m.key : 'F' + (i + 1))
+    }));
+    return `
+(function(){
+  const msgs = ${JSON.stringify(list)};
+  api.addHook('keyDown', e => {
+    for (const m of msgs) {
+      if (e.key === m.key || e.code === m.key) {
+        e.preventDefault();
+        const TT = window.__TT__;
+        if (TT && TT.b1 && TT.b1.aGu && typeof TT.b1.aGu.aGv === 'function') {
+          try { TT.b1.aGu.aGv(3, m.text); api.showToast('💬 ' + m.text); }
+          catch (err) { api.warn('send failed', err); }
+        }
+      }
+    }
+  });
+})();`;
+  }
+
+  function genCustomCss(cfg) {
+    if (!cfg.injectCss) return '';
+    const css = String(cfg.injectCss);
+    return `
+(function(){
+  const existing = document.querySelector('style[data-ttmod="inject"]');
+  if (existing) existing.remove();
+  const s = document.createElement('style');
+  s.dataset.ttmod = 'inject';
+  s.textContent = ${JSON.stringify(css)};
+  document.head.appendChild(s);
+})();`;
+  }
+
+  function genMusic(cfg) {
+    if (!cfg.backgroundMusic) return '';
+    const url = String(cfg.backgroundMusic);
+    const vol = Math.max(0, Math.min(1, Number(cfg.musicVolume ?? 0.4)));
+    const loop = cfg.musicLoop === false ? 'false' : 'true';
+    return `
+(function(){
+  if (window.__ttAudio) { try { window.__ttAudio.pause(); } catch {} }
+  const audio = new Audio(${JSON.stringify(url)});
+  audio.loop = ${loop};
+  audio.volume = ${vol};
+  document.body.appendChild(audio);
+  window.__ttAudio = audio;
+  const play = () => {
+    audio.play().catch(() => api.warn('Autoplay blocked — click to start music'));
+    document.removeEventListener('click', play, true);
+    document.removeEventListener('keydown', play, true);
+  };
+  document.addEventListener('click', play, true);
+  document.addEventListener('keydown', play, true);
+  play();
+})();`;
+  }
+
+  function genSfxVolume(cfg) {
+    if (typeof cfg.sfxVolume !== 'number') return '';
+    const vol = Math.max(0, Math.min(1, Number(cfg.sfxVolume)));
+    return `
+try {
+  const TT = window.__TT__;
+  if (TT && TT.bs && Array.isArray(TT.bs.aV)) {
+    for (const a of TT.bs.aV) if (a) a.volume = ${vol};
+  }
+} catch (e) { api.warn('sfxVolume failed', e); }`;
+  }
+
+  function genAutoSkipSplash(cfg) {
+    if (!cfg.autoSkipSplash) return '';
+    return `
+try { sessionStorage.setItem('tt-skip-splash', '1'); } catch {}
+if (location.pathname.endsWith('index.html') || location.pathname === '/' || location.pathname === '') {
+  location.replace('game.html');
+}`;
+  }
+
+  function genMenuBackground(cfg) {
+    const c = cfg.menuBackground;
+    if (!c) return '';
+    const value = typeof c === 'string' ? c : JSON.stringify(c);
+    return `
+(function(){
+  const existing = document.querySelector('style[data-ttmod="menubg"]');
+  if (existing) existing.remove();
+  const style = document.createElement('style');
+  style.dataset.ttmod = 'menubg';
+  style.textContent =
+    'body { background: ' + ${JSON.stringify(String(value))} + ' !important; }' +
+    '#canvasA { background: transparent !important; }';
+  document.head.appendChild(style);
+})();`;
+  }
+
+  function genGridLines(cfg) {
+    if (!cfg.gridLines) return '';
+    return `
+api.setMenuBackground(((orig) => (g, W, H) => {
+  if (typeof orig === 'function') orig(g, W, H);
+  g.save();
+  g.strokeStyle = 'rgba(255,255,255,0.06)';
+  g.lineWidth = 1;
+  for (let x = 0; x < W; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
+  for (let y = 0; y < H; y += 64) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  g.restore();
+})(api._menuBackground));`;
+  }
+
+  function genSounds(cfg) {
+    if (!cfg.clickSound) return '';
+    const url = String(cfg.clickSound);
+    const vol = Number(cfg.clickVolume ?? 0.3);
+    return `
+(function(){
+  const audio = new Audio(${JSON.stringify(url)});
+  audio.volume = ${vol};
+  document.addEventListener('click', e => {
+    if (e.target.closest('body > button[data-tt-menu-btn="1"]')) {
+      const a = audio.cloneNode();
+      a.volume = ${vol};
+      a.play().catch(() => {});
+    }
+  }, true);
+})();`;
+  }
+
+  function genConfirmExit(cfg) {
+    if (!cfg.confirmExit) return '';
+    return `
+(function(){
+  if (window.__ttConfirmExitInstalled) return;
+  window.__ttConfirmExitInstalled = true;
+  window.addEventListener('beforeunload', e => {
+    const TT = window.__TT__;
+    if (TT && TT.aE && TT.aE.a2G === 1) {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+  });
+})();`;
+  }
+
+  function genPlayerHighlight(cfg) {
+    if (!Array.isArray(cfg.playerHighlight) || !cfg.playerHighlight.length) return '';
+    const list = cfg.playerHighlight.map(p => String(p).slice(0, 30));
+    return `
+api.addHook('postUpdate', () => {
+  const TT = window.__TT__;
+  if (!TT || !TT.ah || !TT.aE || TT.aE.a2G !== 1) return;
+  const names = ${JSON.stringify(list)};
+  const a0j = TT.ah.a0j;
+  if (!a0j) return;
+  for (let i = 0; i < a0j.length; i++) {
+    if (typeof a0j[i] !== 'string') continue;
+    if (names.some(n => a0j[i].toLowerCase().includes(n.toLowerCase()))) {
+      if (!a0j[i].startsWith('★ ')) {
+        a0j[i] = '★ ' + a0j[i];
+        TT.ah.a2w[i] = a0j[i];
+      }
+    }
+  }
+});`;
+  }
+
+  function genStatusBar(cfg) {
+    if (!cfg.statusBar) return '';
+    const text = String(cfg.statusBar).slice(0, 200);
+    const pos  = cfg.statusBarPosition === 'top' ? 'top:40px' : 'bottom:0';
+    return `
+(function(){
+  const existing = document.getElementById('tt-status');
+  if (existing) existing.remove();
+  const el = document.createElement('div');
+  el.id = 'tt-status';
+  el.textContent = ${JSON.stringify(text)};
+  el.style.cssText = 'position:fixed;left:0;right:0;${pos};height:22px;' +
+    'background:rgba(0,0,0,0.6);color:#cff;font:600 11px system-ui;' +
+    'display:flex;align-items:center;justify-content:center;z-index:8;pointer-events:none;';
+  document.body.appendChild(el);
+})();`;
+  }
+
+  /* ============================================================
+   * TRANSLATE
+   * ============================================================ */
+  function translate(source) {
+    const { meta, userScript } = parseTtmod(source);
+    const cfg = meta.config || {};
+
+    const parts = [
+      `/* ============================================================`,
+      ` * Auto-generated from .ttmod v${meta.formatVersion}: ${meta.id}`,
+      ` * ${meta.name || meta.id} · v${meta.version || '1.0.0'}`,
+      ` * ============================================================ */`,
+      `api.log('📦 ${meta.name || meta.id} (.ttmod v${meta.formatVersion})');`,
+      ``,
+      genStartupMessage(cfg),
+      genUserName(cfg),
+      genUserColor(cfg),
+      genFlags(cfg),
+      genFont(cfg),
+      genTheme(cfg),
+      genLayout(cfg),
+      genHideFlags(cfg),
+      genCursor(cfg),
+      genPanorama(cfg, meta),
+      genWatermark(cfg),
+      genStatusBar(cfg),
+      genFpsClock(cfg),
+      genGridLines(cfg),
+      genMenuBackground(cfg),
+      genButtons(cfg),
+      genKeybinds(cfg),
+      genQuickMessages(cfg),
+      genPlayerHighlight(cfg),
+      genCustomCss(cfg),
+      genMusic(cfg),
+      genSfxVolume(cfg),
+      genSounds(cfg),
+      genConfirmExit(cfg),
+      genAutoSkipSplash(cfg),
+      ``,
+      `/* ============================================================`,
+      ` * User <script> block`,
+      ` * ============================================================ */`,
+      userScript || `/* (no user script) */`
+    ];
+
+    const mainCode = parts.filter(s => s !== '').join('\n');
+
+    const modJson = {
+      name:        meta.name || meta.id,
+      version:     meta.version || '1.0.0',
+      author:      meta.author || 'Unknown',
+      description: meta.description || '',
+      icon:        meta.icon || null,
+      main:        'main.js',
+      gameVersion: meta.gameVersion || 25
+    };
+
+    return {
+      meta, modJson, mainCode,
+      assets: meta.assets || {},
+      userScript
+    };
+  }
+
+  global.TtmodTranslator = { parseTtmod, translate, FORMAT_VERSION };
+})(window);

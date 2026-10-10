@@ -65,7 +65,63 @@ html[data-tt-theme="sunset"] {
   --tt-accent-2:  #cc66ff;
 }
 
-/* Chrome bar uses accent-aware background */
+/* ============================================================
+ * Modatorial brand theme — cyan + navy + indigo + emerald
+ * Palette mapping:
+ *   #00F5D4  Red Bar (Primary Action)  → --tt-accent
+ *   #0F172A  Username Input            → --tt-bg
+ *   #1E293B  Game Menu                 → --tt-card
+ *   #0284C7  Custom Scenario           → --tt-border
+ *   #6366F1  My Account                → --tt-accent-2
+ *   #10B981  Mods                      → --tt-emerald
+ *   #059669  Mod Store                 → --tt-mint
+ * ============================================================ */
+html[data-tt-theme="modatorial"] {
+  --tt-accent:    #00F5D4;
+  --tt-bg:        #0F172A;
+  --tt-card:      #1E293B;
+  --tt-border:    #0284C7;
+  --tt-text:      #e6edf3;
+  --tt-text-dim:  #7d8590;
+  --tt-accent-2:  #6366F1;
+  --tt-emerald:   #10B981;
+  --tt-mint:      #059669;
+  --tt-danger:    #f85149;
+  --tt-warn:      #d29922;
+}
+
+/* Per-button brand colors for the injected menu buttons */
+html[data-tt-theme="modatorial"] #tt-mods-btn {
+  background: linear-gradient(180deg, #10B981 0%, #059669 100%) !important;
+  border-color: #00F5D4 !important;
+}
+html[data-tt-theme="modatorial"] #tt-mods-btn:hover {
+  background: linear-gradient(180deg, #34d399 0%, #10B981 100%) !important;
+}
+html[data-tt-theme="modatorial"] #tt-store-btn {
+  background: linear-gradient(180deg, #059669 0%, #046f53 100%) !important;
+  border-color: #10B981 !important;
+}
+html[data-tt-theme="modatorial"] #tt-store-btn:hover {
+  background: linear-gradient(180deg, #10B981 0%, #059669 100%) !important;
+}
+html[data-tt-theme="modatorial"] #tt-appearance-btn {
+  background: linear-gradient(180deg, #6366F1 0%, #4a4dc9 100%) !important;
+  border-color: #00F5D4 !important;
+}
+html[data-tt-theme="modatorial"] #tt-appearance-btn:hover {
+  background: linear-gradient(180deg, #818cf8 0%, #6366F1 100%) !important;
+}
+
+/* Cyan glow on the chrome bar */
+html[data-tt-theme="modatorial"] #tt-chrome {
+  border-bottom-color: var(--tt-accent) !important;
+  box-shadow: 0 1px 0 0 rgba(0,245,212,0.35) inset;
+}
+
+/* ============================================================
+ * Chrome bar — accent aware (applies to all themes)
+ * ============================================================ */
 #tt-chrome {
   background: linear-gradient(
     180deg,

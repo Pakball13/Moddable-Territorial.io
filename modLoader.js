@@ -1,13 +1,7 @@
 /* ============================================================
- * Territorial.io Mod Loader  v1.11.0
- * Patch 1.10.2 + 1.11.0:
- *   • TerritorialAPI facade (getPlayers, getMap, getTerritories, …)
- *   • Version + compatibility checks
- *   • Dependency resolution (requires / conflictsWith / optionalDeps)
- *   • Lifecycle (enable / disable / unload) + auto-cleanup
- *   • Per-mod logging ([mod:modid] prefix)
- *   • Per-mod reload button
- *   • Search / filter in mod menu
+ * Territorial.io Mod Loader  v1.10.2
+ * Full client: sidebar, themes, layouts, mod menu, settings,
+ * promo integration, store + appearance buttons
  * ============================================================ */
 (function (global) {
   'use strict';
@@ -36,24 +30,6 @@
     'Mods':            ICON_DIR + 'mods.svg'
   };
 
-  /* ============================================================
-   * SEMVER HELPERS
-   * ============================================================ */
-  function parseSemver(str) {
-    if (!str) return [0, 0, 0];
-    return String(str).split('.').map(n => parseInt(n, 10) || 0).slice(0, 3);
-  }
-  function compareSemver(a, b) {
-    const A = parseSemver(a), B = parseSemver(b);
-    for (let i = 0; i < 3; i++) {
-      if (A[i] !== B[i]) return A[i] - B[i];
-    }
-    return 0;
-  }
-
-  /* ============================================================
-   * THEMES
-   * ============================================================ */
   const THEMES = ['midnight', 'cyberpunk', 'forest', 'mono', 'sunset'];
   function applyTheme(name) {
     if (!THEMES.includes(name)) name = 'midnight';
@@ -61,7 +37,6 @@
     localStorage.setItem(THEME_KEY, name);
   }
 
-  /* ---------- visibility helper ---------- */
   function isVisible(el) {
     if (!el) return false;
     const s = getComputedStyle(el);
@@ -70,7 +45,6 @@
     return r.width > 0 && r.height > 0;
   }
 
-  /* ---------- downloads ---------- */
   function downloadText(text, filename) {
     const blob = new Blob([text], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
@@ -87,77 +61,29 @@
       r.readAsDataURL(blob);
     });
   }
-  function fileToDataURL(file) { return blobToDataURL(file); }
 
-  /* ============================================================
-   * HOOK SYSTEM (per-mod aware)
-   * ============================================================ */
   const listeners = new Map();
   const hooks = {
     preUpdate:[], postUpdate:[], preRender:[], postRender:[],
     netSend:[], netRecv:[],
     keyDown:[], keyUp:[], mouseDown:[], mouseUp:[], mouseMove:[]
   };
-
-  let _currentMod = null;   /* attribution context */
-
-  function setCurrentMod(meta) { _currentMod = meta; }
-  function clearCurrentMod() { _currentMod = null; }
-
-  /* ---------- listeners ---------- */
   const on  = (evt, fn) => {
     if (!listeners.has(evt)) listeners.set(evt, new Set());
     listeners.get(evt).add(fn);
-    if (_currentMod) {
-      _currentMod._listeners.push({ evt, fn });
-    }
     return () => listeners.get(evt).delete(fn);
   };
   const off = (evt, fn) => listeners.get(evt)?.delete(fn);
   const emit = (evt, ...args) => {
     const s = listeners.get(evt); if (!s) return;
-    for (const fn of s) {
-      try { fn(...args); } catch (e) { err(`listener ${evt}`, e); }
-    }
+    for (const fn of s) { try { fn(...args); } catch (e) { err(`listener ${evt}`, e); } }
   };
-
-  /* ---------- hooks ---------- */
-  const addHook = (name, fn) => {
-    if (!hooks[name]) return;
-    hooks[name].push(fn);
-    if (_currentMod) {
-      _currentMod._hooks.push({ name, fn });
-    }
-  };
+  const addHook = (name, fn) => { if (hooks[name]) hooks[name].push(fn); };
   const runHooks = (name, ...args) => {
     const l = hooks[name]; if (!l) return;
-    for (const fn of l) {
-      try { fn(...args); } catch (e) { err(`hook ${name}`, e); }
-    }
+    for (const fn of l) { try { fn(...args); } catch (e) { err(`hook ${name}`, e); } }
   };
 
-  /* ---------- tracked timers ---------- */
-  function trackedSetInterval(fn, ms) {
-    const id = setInterval(fn, ms);
-    if (_currentMod) _currentMod._intervals.push(id);
-    return id;
-  }
-  function trackedSetTimeout(fn, ms) {
-    const id = setTimeout(fn, ms);
-    if (_currentMod) _currentMod._timeouts.push(id);
-    return id;
-  }
-  function trackedClearInterval(id) {
-    clearInterval(id);
-    if (_currentMod) {
-      const i = _currentMod._intervals.indexOf(id);
-      if (i >= 0) _currentMod._intervals.splice(i, 1);
-    }
-  }
-
-  /* ============================================================
-   * TOP-RIGHT UI STACKING RAIL
-   * ============================================================ */
   const _stacks = new Map();
   function getTopRightStack(slot) {
     const key = slot || 'default';
@@ -176,9 +102,6 @@
     return el;
   }
 
-  /* ============================================================
-   * PAGE TRANSITION OVERLAY
-   * ============================================================ */
   let transitionEl = null;
   function getTransitionEl() {
     if (transitionEl && document.body.contains(transitionEl)) return transitionEl;
@@ -216,8 +139,7 @@
 
   function persistImported() {
     try { localStorage.setItem(IMPORTED_KEY, JSON.stringify(importedBundles)); }
-    catch (e) { warn('Could not persist imported bundles:', e);
-                API.showToast('⚠️ Storage full'); }
+    catch (e) { warn('Could not persist imported bundles:', e); }
   }
 
   const CLIENT = {
@@ -230,9 +152,6 @@
     hideMultiplayer:  localStorage.getItem('tt-hidemulti') !== '0'
   };
 
-  /* ============================================================
-   * MOD SETTINGS (unchanged)
-   * ============================================================ */
   function loadSettingsFromStorage(modId, schema) {
     const out = {};
     if (!Array.isArray(schema)) return out;
@@ -259,6 +178,7 @@
       return;
     }
     if (settingsModal) settingsModal.remove();
+
     const overlay = document.createElement('div');
     overlay.id = 'tt-settings-modal';
     overlay.dataset.ttOur = '1';
@@ -267,6 +187,7 @@
       zIndex: 100004, display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '40px 20px', boxSizing: 'border-box'
     });
+
     const panel = document.createElement('div');
     Object.assign(panel.style, {
       background: '#161b22', border: '1px solid #30363d',
@@ -274,6 +195,7 @@
       maxWidth: '520px', width: '100%',
       maxHeight: '80vh', overflowY: 'auto', color: '#fff'
     });
+
     const head = document.createElement('div');
     head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;';
     head.innerHTML = `<div style="font-size:18px;font-weight:700;">⚙️ ${meta.name}</div>`;
@@ -283,25 +205,30 @@
     close.addEventListener('click', () => { overlay.remove(); settingsModal = null; });
     head.appendChild(close);
     panel.appendChild(head);
+
     meta.settings_schema.forEach(s => {
       const row = document.createElement('div');
       row.style.cssText = 'padding:12px 10px;border-radius:8px;margin-bottom:6px;display:flex;flex-direction:column;gap:6px;';
+
       const label = document.createElement('div');
       label.textContent = s.label || s.id;
       label.style.cssText = 'font-size:13px;font-weight:600;';
       row.appendChild(label);
+
       if (s.description) {
         const desc = document.createElement('div');
         desc.textContent = s.description;
         desc.style.cssText = 'font-size:11px;opacity:.6;';
         row.appendChild(desc);
       }
+
       let input;
       const onChange = v => {
         meta.settings[s.id] = v;
         saveSettingValue(modId, s.id, v);
         emit('modSettingsChanged', modId, s.id, v, meta);
       };
+
       if (s.type === 'slider') {
         const wrap = document.createElement('div');
         wrap.style.cssText = 'display:flex;gap:10px;align-items:center;';
@@ -360,6 +287,7 @@
       }
       panel.appendChild(row);
     });
+
     overlay.appendChild(panel);
     overlay.addEventListener('click', e => {
       if (e.target === overlay) { overlay.remove(); settingsModal = null; }
@@ -368,132 +296,13 @@
     settingsModal = overlay;
   }
 
-  /* ============================================================
-   * MOD CONTEXT API
-   * Every mod gets a scoped "mod" object that includes
-   *   • log/warn/error prefixed with [mod:id]
-   *   • tracked timers
-   *   • cleanup registration
-   *   • lifecycle callbacks
-   * ============================================================ */
-  function makeModApi(meta) {
-    return {
-      /* Scoped logging */
-      log:   (...a) => console.log  (`%c[mod:${meta.id}]`, 'color:#8ce;font-weight:bold', ...a),
-      warn:  (...a) => console.warn (`%c[mod:${meta.id}]`, 'color:#ec8;font-weight:bold', ...a),
-      error: (...a) => console.error(`%c[mod:${meta.id}]`, 'color:#e88;font-weight:bold', ...a),
-
-      /* Tracked timers */
-      setInterval: (fn, ms) => trackedSetInterval(fn, ms),
-      setTimeout:  (fn, ms) => trackedSetTimeout(fn, ms),
-      clearInterval: id => trackedClearInterval(id),
-      clearTimeout:  id => clearTimeout(id),
-
-      /* Manual cleanup registration */
-      registerCleanup(fn) {
-        if (typeof fn === 'function') meta._cleanups.push(fn);
-      },
-
-      /* Convenience getters */
-      get id() { return meta.id; },
-      get name() { return meta.name; },
-      get settings() { return meta.settings; },
-      get meta() { return meta; }
-    };
-  }
-
-  /* ============================================================
-   * PUBLIC API
-   * ============================================================ */
   const API = {
-    version: '1.11.0',
+    version: '1.10.2',
     gameVersion: 25,
     getGame() { return window.__TT__ || null; },
     on, off, emit, addHook, mods,
     log, warn, error: err,
 
-    /* ============================================================
-     * STABLE GAME FACADE (Patch 1.10.2)
-     * ============================================================ */
-    getPlayers() {
-      const TT = window.__TT__;
-      if (!TT || !TT.ah || !TT.aE) return [];
-      const out = [];
-      const fW = TT.aE.fW || 0;
-      for (let i = 0; i < fW; i++) {
-        if (!TT.ah.nU || TT.ah.nU[i] === 0) continue;
-        out.push({
-          id: i,
-          name: TT.ah.a0j ? TT.ah.a0j[i] : '',
-          strength: TT.ah.hb ? TT.ah.hb[i] : 0,
-          territory: TT.ah.hN ? TT.ah.hN[i] : 0,
-          isHuman: i < (TT.aE.ku || 0),
-          bounds: {
-            minX: TT.ah.jS ? TT.ah.jS[i] : 0,
-            minY: TT.ah.jU ? TT.ah.jU[i] : 0,
-            maxX: TT.ah.jT ? TT.ah.jT[i] : 0,
-            maxY: TT.ah.jV ? TT.ah.jV[i] : 0
-          }
-        });
-      }
-      return out;
-    },
-    getPlayer(id) {
-      return this.getPlayers().find(p => p.id === id) || null;
-    },
-    getMyPlayer() {
-      const TT = window.__TT__;
-      if (!TT || !TT.aE) return null;
-      return this.getPlayer(TT.aE.fJ);
-    },
-    getMap() {
-      const TT = window.__TT__;
-      if (!TT || !TT.aE) return null;
-      return {
-        maxPlayers: TT.aE.fW || 0,
-        humanCount: TT.aE.ku || 0,
-        botCount: (TT.aE.fW || 0) - (TT.aE.ku || 0),
-        tileCount: TT.aE.ke || 0,
-        inMatch: TT.aE.a2G === 1,
-        isReplay: !!TT.aE.hi
-      };
-    },
-    getTerritories() {
-      return this.getPlayers().map(p => ({
-        playerId: p.id, bounds: p.bounds,
-        strength: p.strength, territory: p.territory
-      }));
-    },
-    isInMatch() {
-      const TT = window.__TT__;
-      return !!(TT && TT.aE && TT.aE.a2G === 1);
-    },
-    setPlayerName(id, name) {
-      const TT = window.__TT__;
-      if (!TT || !TT.ah || !TT.ah.a0j) return false;
-      if (id < 0 || id >= (TT.aE.fW || 0)) return false;
-      const safe = String(name).slice(0, 20);
-      TT.ah.a0j[id] = safe;
-      TT.ah.a2w[id] = safe;
-      return true;
-    },
-
-    /* ---- Event shortcuts (stable names) ---- */
-    onGameEvent(name, fn) { return on('game:' + name, fn); },
-    onRender(layer, fn) {
-      const l = ['background', 'hud', 'widgets', 'overlay'].includes(layer) ? layer : 'hud';
-      return on('render:' + l, fn);
-    },
-    onInput(type, fn) {
-      if (!['click', 'mousedown', 'mouseup', 'mousemove', 'keydown', 'keyup'].includes(type)) {
-        return () => {};
-      }
-      return on('input:' + type, fn);
-    },
-
-    /* ============================================================
-     * STANDARD GAME / CANVAS HELPERS
-     * ============================================================ */
     getGameCanvas  : () => document.getElementById('canvasA'),
     getGameContext : () => document.getElementById('canvasA')?.getContext('2d'),
     getGameSize    : () => {
@@ -573,18 +382,12 @@
       });
     },
 
-    /* ============================================================
-     * MOD LIFECYCLE — external controls
-     * ============================================================ */
     isModDisabled(id) { return disabledMods.has(id); },
     setModDisabled(id, disabled) {
       if (disabled) disabledMods.add(id); else disabledMods.delete(id);
       persistDisabled();
       const meta = mods.get(id);
-      if (meta) {
-        meta.status = disabled ? 'disabled' : 'loaded';
-        if (disabled) teardownMod(meta); else setupMod(meta);
-      }
+      if (meta) meta.status = disabled ? 'disabled' : 'loaded';
       emit('modToggled', id, disabled);
       if (menuEl) menuEl.render();
       API.showToast(`🔧 ${id} ${disabled ? 'disabled' : 'enabled'} — click Reload`);
@@ -593,41 +396,17 @@
     toggleMod(id) { return this.setModDisabled(id, !disabledMods.has(id)); },
     disableAllMods() {
       for (const m of mods.values()) disabledMods.add(m.id);
-      persistDisabled();
-      for (const m of mods.values()) teardownMod(m);
-      if (menuEl) menuEl.render();
+      persistDisabled(); if (menuEl) menuEl.render();
       API.showToast('🔧 All mods disabled — click Reload');
     },
     enableAllMods() {
       disabledMods.clear(); persistDisabled();
-      for (const m of mods.values()) setupMod(m);
       if (menuEl) menuEl.render();
       API.showToast('🔧 All mods enabled — click Reload');
     },
     resetModState() { localStorage.removeItem(DISABLED_KEY); location.reload(); },
     reloadPage() { location.reload(); },
 
-    /* Reload a single mod (unload + re-run its main) */
-    async reloadMod(id) {
-      const meta = mods.get(id);
-      if (!meta) throw new Error('No such mod');
-      teardownMod(meta);
-      log(`Reloading ${id}…`);
-      if (meta._bundle) {
-        await runModMain(meta._bundle.main, meta);
-      } else if (meta.basePath) {
-        const r = await fetch(meta.basePath + (meta.main || 'main.js'), { cache: 'no-store' });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const code = await r.text();
-        await runModMain(code, meta);
-      }
-      setupMod(meta);
-      meta.status = 'loaded';
-      log(`✅ Reloaded ${id}`);
-      if (menuEl) menuEl.render();
-    },
-
-    /* ---- sidebar ---- */
     setSidebarCollapsed(on) {
       CLIENT.sidebarCollapsed = !!on;
       localStorage.setItem(SIDEBAR_KEY, on ? '1' : '0');
@@ -638,7 +417,6 @@
     toggleSidebar() { return this.setSidebarCollapsed(!CLIENT.sidebarCollapsed); },
     getSidebarCollapsed() { return CLIENT.sidebarCollapsed; },
 
-    /* ---- theme ---- */
     setTheme(name) {
       applyTheme(name);
       if (chromeEl) updateChrome();
@@ -648,7 +426,6 @@
     getTheme() { return localStorage.getItem(THEME_KEY) || 'midnight'; },
     getThemes() { return THEMES.slice(); },
 
-    /* ---- settings ---- */
     openSettings(id) { openSettingsFor(id); },
     getSetting(modId, settingId) {
       const m = mods.get(modId); return m && m.settings ? m.settings[settingId] : undefined;
@@ -661,7 +438,6 @@
       return true;
     },
 
-    /* ---- .ttmod ---- */
     listImportedBundles() {
       return importedBundles.map(b => ({
         id: b.id, name: b.name, version: b.version, author: b.author
@@ -748,9 +524,10 @@
         } catch { return false; }
       };
       if (modJson.icon) await tryFetch(modJson.icon);
-      for (const g of ['assets/panorama.png','assets/panorama.jpg','assets/icon.png']) {
-        if (!assets[g]) await tryFetch(g);
-      }
+      for (const g of [
+        'assets/panorama.png','assets/panorama.jpg','assets/icon.png',
+        'assets/sound.mp3','assets/music.mp3'
+      ]) { if (!assets[g]) await tryFetch(g); }
       const bundleMeta = {
         id: modJson.id || id, name: modJson.name || meta.name,
         version: modJson.version || meta.version,
@@ -766,7 +543,6 @@
       return true;
     },
 
-    /* ---- layout / chrome ---- */
     setLayout(mode) {
       if (!['sidebar', 'grid', 'circles'].includes(mode)) return false;
       CLIENT.layout = mode;
@@ -801,170 +577,154 @@
   };
   global.TerritorialMods = API;
 
-  /* ============================================================
-   * MOD SETUP / TEARDOWN
-   * ============================================================ */
-  function setupMod(meta) {
-    if (!meta || meta.status === 'disabled') return;
-    try {
-      if (typeof meta.exports === 'object' && meta.exports) {
-        if (typeof meta.exports.onEnable === 'function') meta.exports.onEnable(meta._modApi);
-        if (typeof meta.exports.init === 'function')   meta.exports.init(meta._modApi);
-      }
-    } catch (e) { err(`[mod:${meta.id}] init failed`, e); }
+  const SUPPRESS_GAME_ERROR_DIALOG = true;
+  if (SUPPRESS_GAME_ERROR_DIALOG) {
+    window.addEventListener('error', e => {
+      err('Uncaught:', e.message, (e.filename || '') + ':' + e.lineno);
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }, true);
   }
 
-  function teardownMod(meta) {
-    if (!meta || meta._torndown) return;
-    meta._torndown = true;
-
+  const OrigWS = global.WebSocket;
+  const BLOCKED_HOSTS = ['territorial.io','1.territorial.io','2.territorial.io'];
+  function hostMatches(url) {
     try {
-      if (typeof meta.exports === 'object' && meta.exports) {
-        if (typeof meta.exports.onDisable === 'function') meta.exports.onDisable(meta._modApi);
-        if (typeof meta.exports.onUnload === 'function')  meta.exports.onUnload(meta._modApi);
-      }
-    } catch (e) { err(`[mod:${meta.id}] disable failed`, e); }
-
-    /* Remove hooks */
-    for (const h of meta._hooks) {
-      const arr = hooks[h.name];
-      if (!arr) continue;
-      const i = arr.indexOf(h.fn);
-      if (i >= 0) arr.splice(i, 1);
-    }
-    meta._hooks = [];
-
-    /* Remove listeners */
-    for (const l of meta._listeners) {
-      const set = listeners.get(l.evt);
-      if (set) set.delete(l.fn);
-    }
-    meta._listeners = [];
-
-    /* Clear timers */
-    for (const id of meta._intervals) clearInterval(id);
-    for (const id of meta._timeouts) clearTimeout(id);
-    meta._intervals = [];
-    meta._timeouts = [];
-
-    /* Custom cleanups */
-    for (const fn of meta._cleanups) {
-      try { fn(); } catch (e) { err(`[mod:${meta.id}] cleanup failed`, e); }
-    }
-    meta._cleanups = [];
-
-    /* Remove DOM elements the mod added */
-    for (const el of meta._domElements) {
-      if (el && el.parentNode) el.parentNode.removeChild(el);
-    }
-    meta._domElements = [];
+      const u = new URL(url, location.href);
+      const h = u.hostname.toLowerCase();
+      return BLOCKED_HOSTS.some(b => h === b || h.endsWith('.' + b));
+    } catch { return false; }
   }
-
-  function makeEmptyMeta() {
+  const isBlocked = url => API.offlineMode && hostMatches(url);
+  function makeFakeWS(url) {
+    const L = Object.create(null);
     return {
-      _hooks: [], _listeners: [], _intervals: [], _timeouts: [],
-      _cleanups: [], _domElements: [], _torndown: false
+      url: String(url), protocol:'', extensions:'',
+      bufferedAmount: 0, binaryType:'arraybuffer',
+      readyState:0, CONNECTING:0, OPEN:1, CLOSING:2, CLOSED:3,
+      onopen:null, onerror:null, onmessage:null, onclose:null,
+      addEventListener(t, fn) { (L[t] || (L[t] = [])).push(fn); },
+      removeEventListener(t, fn) {
+        const l = L[t]; if (!l) return;
+        const i = l.indexOf(fn); if (i >= 0) l.splice(i, 1);
+      },
+      dispatchEvent() { return true; }, send() {}, close() { this.readyState = 3; }
     };
   }
+  function WSProxy(url, protocols) {
+    if (isBlocked(url)) { try { log(`↳ blocked WS`); } catch {} return makeFakeWS(url); }
+    const ws = protocols !== undefined ? new OrigWS(url, protocols) : new OrigWS(url);
+    const origSend = ws.send.bind(ws);
+    ws.send = function (data) {
+      try { runHooks('netSend', data, ws, url); } catch (e) { err(e); }
+      return origSend(data);
+    };
+    ws.addEventListener('message', e => {
+      try { runHooks('netRecv', e.data, ws, url); } catch (er) { err(er); }
+    });
+    return ws;
+  }
+  WSProxy.prototype = OrigWS.prototype;
+  WSProxy.CONNECTING = OrigWS.CONNECTING;
+  WSProxy.OPEN = OrigWS.OPEN;
+  WSProxy.CLOSING = OrigWS.CLOSING;
+  WSProxy.CLOSED = OrigWS.CLOSED;
+  global.WebSocket = WSProxy;
+  API.offlineMode = true;
+  API.blockedHosts = BLOCKED_HOSTS;
 
-  /* Wraps document.createElement so mods' elements can be auto-removed */
-  const _origCreateElement = document.createElement.bind(document);
-  function trackedCreateElement(tag) {
-    const el = _origCreateElement(tag);
-    if (_currentMod) _currentMod._domElements.push(el);
-    return el;
+  const origRAF = global.requestAnimationFrame.bind(global);
+  global.requestAnimationFrame = cb => origRAF(t => {
+    runHooks('preUpdate', t);
+    let out; try { out = cb(t); }
+    catch (e) { runHooks('postUpdate', t); throw e; }
+    runHooks('postUpdate', t);
+    return out;
+  });
+
+  const inputMap = {
+    keydown:'keyDown', keyup:'keyUp',
+    mousedown:'mouseDown', mouseup:'mouseUp', mousemove:'mouseMove'
+  };
+  for (const evt in inputMap) {
+    window.addEventListener(evt, e => {
+      emit(evt, e); runHooks(inputMap[evt], e);
+    }, false);
   }
 
-  /* ============================================================
-   * MOD MAIN RUNNER
-   * ============================================================ */
-  async function runModMain(code, meta) {
-    const modApi = meta._modApi;
-    setCurrentMod(meta);
-    const _origCreateEl = document.createElement;
-    document.createElement = trackedCreateElement;
-    try {
-      const factory = new Function('api', 'mod',
-        `"use strict";\n${code}\n//# sourceURL=mod:${meta.id}`);
-      meta.exports = factory(API, modApi) || {};
-    } catch (e) {
-      meta.status = 'error';
-      meta.error = e;
-      err(`[mod:${meta.id}] Runtime error:`, e);
-      throw e;
-    } finally {
-      document.createElement = _origCreateEl;
-      clearCurrentMod();
+  const OrigCtx = CanvasRenderingContext2D.prototype;
+  const origDrawImage = OrigCtx.drawImage;
+  OrigCtx.drawImage = function (...args) {
+    try { runHooks('preRender', this); } catch (e) { err(e); }
+    const r = origDrawImage.apply(this, args);
+    try { runHooks('postRender', this); } catch (e) { err(e); }
+    return r;
+  };
+  const origFillText = OrigCtx.fillText;
+  const VERSION_RE = /^\d{1,2}\s+\w{3,}\s+\d{4}\s*\[/;
+  OrigCtx.fillText = function (text, x, y, maxWidth) {
+    if (CLIENT.hideVersion && typeof text === 'string' && VERSION_RE.test(text)) return;
+    return maxWidth !== undefined
+      ? origFillText.call(this, text, x, y, maxWidth)
+      : origFillText.call(this, text, x, y);
+  };
+
+  const HIDE_POPUP = [
+    'Logs','Game Log','Clan Charts','Gold Transfer',
+    'Join Lobby 2','Account Recovery','Delete Data',
+    'Privacy Settings','Links','Replay','Force Restart Game'
+  ];
+  function isOurButton(btn) {
+    if (!btn) return false;
+    if (btn.id && btn.id.startsWith('tt-')) return true;
+    if (btn.dataset && btn.dataset.ttOur === '1') return true;
+    return false;
+  }
+  function stripEmoji(s) {
+    return (s || '').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu, '').trim();
+  }
+  function hideByTag(btn, tag) {
+    btn.dataset[tag] = '1';
+    btn.style.setProperty('display', 'none', 'important');
+    btn.style.setProperty('visibility', 'hidden', 'important');
+    btn.style.setProperty('width', '0', 'important');
+    btn.style.setProperty('height', '0', 'important');
+    btn.style.setProperty('opacity', '0', 'important');
+    btn.setAttribute('hidden', '');
+  }
+  function showByTag(btn, tag) {
+    delete btn.dataset[tag];
+    btn.style.removeProperty('display');
+    btn.style.removeProperty('visibility');
+    btn.style.removeProperty('width');
+    btn.style.removeProperty('height');
+    btn.style.removeProperty('opacity');
+    btn.removeAttribute('hidden');
+  }
+  function filterMenuPopupButtons() {
+    if (!CLIENT.hideMenuButtons) {
+      document.querySelectorAll('button[data-tt-hid]').forEach(b => showByTag(b, 'ttHid'));
+      return;
     }
+    document.querySelectorAll('button').forEach(btn => {
+      if (isOurButton(btn)) return;
+      const txt = stripEmoji(btn.textContent);
+      if (!txt) return;
+      if (HIDE_POPUP.some(h => txt === h || txt.includes(h))) hideByTag(btn, 'ttHid');
+    });
   }
-
-  /* ============================================================
-   * VERSION + DEPENDENCY VALIDATION
-   * ============================================================ */
-  function validateVersions(meta) {
-    if (meta.minimumClientVersion) {
-      if (compareSemver(API.version, meta.minimumClientVersion) < 0) {
-        throw new Error(
-          `Requires client v${meta.minimumClientVersion} or newer ` +
-          `(this is v${API.version})`
-        );
+  function filterMultiplayer() {
+    document.querySelectorAll('body > button').forEach(btn => {
+      if (isOurButton(btn)) return;
+      const txt = stripEmoji(btn.textContent);
+      if (!txt) return;
+      if (txt.includes('Multiplayer')) {
+        if (CLIENT.hideMultiplayer) hideByTag(btn, 'ttMulti');
+        else showByTag(btn, 'ttMulti');
       }
-    }
-    if (Array.isArray(meta.compatibleGameVersions) &&
-        meta.compatibleGameVersions.length > 0 &&
-        !meta.compatibleGameVersions.includes(API.gameVersion)) {
-      throw new Error(
-        `Not compatible with game r${API.gameVersion} ` +
-        `(works with: r${meta.compatibleGameVersions.join(', r')})`
-      );
-    }
+    });
   }
 
-  function resolveDependencies() {
-    /* Iterate until stable so cascading disables work */
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const meta of mods.values()) {
-        if (meta.status === 'error' || meta.status === 'disabled') continue;
-
-        /* conflictsWith */
-        if (Array.isArray(meta.conflictsWith)) {
-          for (const cid of meta.conflictsWith) {
-            const other = mods.get(cid);
-            if (other && other.status === 'loaded') {
-              meta.status = 'error';
-              meta.error = new Error(`Conflicts with "${other.name}"`);
-              teardownMod(meta);
-              warn(`Mod "${meta.name}" disabled: conflicts with "${other.name}"`);
-              changed = true;
-              break;
-            }
-          }
-        }
-        if (meta.status === 'error') continue;
-
-        /* requires */
-        if (Array.isArray(meta.requires)) {
-          const missing = meta.requires.filter(rid => {
-            const r = mods.get(rid);
-            return !r || r.status !== 'loaded';
-          });
-          if (missing.length) {
-            meta.status = 'error';
-            meta.error = new Error(`Missing dependencies: ${missing.join(', ')}`);
-            teardownMod(meta);
-            warn(`Mod "${meta.name}" disabled: missing ${missing.join(', ')}`);
-            changed = true;
-          }
-        }
-      }
-    }
-  }
-
-  /* ============================================================
-   * GAME-INTERNALS PATCHERS (unchanged)
-   * ============================================================ */
   function patchMenuBackground() {
     const TT = window.__TT__;
     if (!TT || !TT.ab) return false;
@@ -1027,18 +787,9 @@
     return done;
   }
 
-  /* ============================================================
-   * DOM HELPERS
-   * ============================================================ */
   const MAIN_KEYS = ['Multiplayer', 'Custom Scenario', 'My Account', 'Game Menu'];
   const MODS_BTN_ID = 'tt-mods-btn';
 
-  function isOurButton(btn) {
-    if (!btn) return false;
-    if (btn.id && btn.id.startsWith('tt-')) return true;
-    if (btn.dataset && btn.dataset.ttOur === '1') return true;
-    return false;
-  }
   function isOurMenuButton(btn) {
     if (!btn || btn.tagName !== 'BUTTON') return false;
     if (btn.parentElement !== document.body) return false;
@@ -1101,12 +852,6 @@
     el.style.setProperty('gap', '14px', 'important');
   }
 
-  /* ============================================================
-   * ICON REPLACEMENT
-   * ============================================================ */
-  function stripEmoji(s) {
-    return (s || '').replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu, '').trim();
-  }
   function applyIcons() {
     const candidates = [...document.querySelectorAll('body > button')];
     candidates.forEach(btn => {
@@ -1144,9 +889,6 @@
     });
   }
 
-  /* ============================================================
-   * LAYOUT ENGINE
-   * ============================================================ */
   function applyLayout() {
     const mainBtns = getMainMenuButtons();
     if (mainBtns.length < 1) return;
@@ -1158,9 +900,13 @@
       return (parseFloat(a.style.left) || 0) - (parseFloat(b.style.left) || 0);
     });
 
-    const modsBtn = document.getElementById(MODS_BTN_ID);
-    const filtered = sorted.filter(b => b.id !== MODS_BTN_ID);
-    const all = modsBtn ? [...filtered, modsBtn] : filtered;
+    const modsBtn  = document.getElementById('tt-mods-btn');
+    const storeBtn = document.getElementById('tt-store-btn');
+    const appearBtn = document.getElementById('tt-appearance-btn');
+    const filtered = sorted.filter(b =>
+      b.id !== 'tt-mods-btn' && b.id !== 'tt-store-btn' && b.id !== 'tt-appearance-btn');
+    const extras = [modsBtn, storeBtn, appearBtn].filter(Boolean);
+    const all = [...filtered, ...extras];
 
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -1170,14 +916,29 @@
 
     if (CLIENT.layout === 'sidebar') {
       const collapsed = CLIENT.sidebarCollapsed;
-      const rowH = 60, gap = 10;
       const panelW  = collapsed ? 60 : 320;
       const leftPad = 32;
+
       const rows   = all.length + (hasTopRow && !collapsed ? 1 : 0);
+      const gap    = 10;
+
+      // ---- Dynamic row height: fit within the viewport ----
+      const topMargin    = 50;   // space for the chrome bar
+      const bottomMargin = 40;   // space for the bottom status bar
+      const available    = vh - topMargin - bottomMargin;
+      const idealRowH    = 60;
+      const neededH      = rows * idealRowH + (rows - 1) * gap;
+      let rowH = idealRowH;
+      if (neededH > available) {
+        // Shrink rows to fit
+        rowH = Math.max(36, Math.floor((available - (rows - 1) * gap) / rows));
+      }
+
       const totalH = rows * rowH + (rows - 1) * gap;
       const startX = leftPad;
-      const startY = Math.max(60, (vh - totalH) / 2);
+      const startY = Math.max(topMargin, Math.floor((vh - totalH) / 2));
       let y = startY;
+
       if (hasTopRow && !collapsed) {
         const swatchW = rowH;
         const inputW  = panelW - swatchW - gap;
@@ -1196,11 +957,12 @@
         }
         y += rowH + gap;
       }
+
       all.forEach(b => {
         hardPos(b, startX, y, panelW, rowH);
         b.dataset.ttLayout = 'sidebar';
         b.style.setProperty('border-radius', '8px', 'important');
-        b.style.setProperty('font-size', '15px', 'important');
+        b.style.setProperty('font-size', Math.max(11, Math.floor(rowH * 0.25)) + 'px', 'important');
         const label = b.querySelector('.tt-btn-label');
         if (collapsed) {
           b.style.setProperty('justify-content', 'center', 'important');
@@ -1285,9 +1047,6 @@
     }
   }
 
-  /* ============================================================
-   * CLIENT CHROME
-   * ============================================================ */
   let chromeEl = null;
   function buildChrome() {
     const el = document.createElement('div');
@@ -1309,6 +1068,7 @@
     badge.style.cssText = 'font-size:10px;padding:2px 6px;border-radius:10px;background:#2b6a2b;color:#dfe;margin-left:6px;font-weight:600;';
     brand.appendChild(badge);
     const spacer = document.createElement('div'); spacer.style.flex = '1';
+
     const mkBtn = (label, title, fn) => {
       const b = document.createElement('button');
       b.textContent = label; b.title = title; b.dataset.ttOur = '1';
@@ -1323,6 +1083,7 @@
       b.addEventListener('click', fn);
       return b;
     };
+
     let sidebarBtn = null;
     if (CLIENT.layout === 'sidebar') {
       sidebarBtn = mkBtn(
@@ -1334,6 +1095,7 @@
         }
       );
     }
+
     const layoutBtn = mkBtn(
       '☷ ' + CLIENT.layout.charAt(0).toUpperCase() + CLIENT.layout.slice(1),
       'Cycle layout',
@@ -1345,6 +1107,7 @@
         updateChrome();
       }
     );
+
     const themeBtn = mkBtn(
       '🎨 ' + (API.getTheme()[0].toUpperCase() + API.getTheme().slice(1)),
       'Change theme',
@@ -1356,6 +1119,7 @@
         themeBtn.textContent = '🎨 ' + next[0].toUpperCase() + next.slice(1);
       }
     );
+
     const storeBtn = mkBtn('📦 Store', 'Open the mod store (F8)', () => {
       if (window.ModStore && typeof window.ModStore.open === 'function') {
         window.ModStore.open();
@@ -1363,7 +1127,9 @@
         API.showToast('⚠️ mod-store.js not loaded');
       }
     });
+
     const modsBtn = mkBtn('🔧 Mods', 'Open mod menu (F10)', () => showMenu());
+
     const muteBtn = mkBtn(
       (window.TerritorialSounds && window.TerritorialSounds.isMuted()) ? '🔇' : '🔊',
       'Mute / unmute audio',
@@ -1371,10 +1137,14 @@
         if (window.TerritorialSounds) {
           const m = window.TerritorialSounds.toggleMute();
           muteBtn.textContent = m ? '🔇' : '🔊';
+        } else {
+          API.showToast('sounds.js not loaded');
         }
       }
     );
+
     const hideBtn = mkBtn('✕', 'Hide chrome', () => API.setChrome(false));
+
     el.append(brand, spacer);
     if (sidebarBtn) el.appendChild(sidebarBtn);
     el.append(layoutBtn, themeBtn, storeBtn, modsBtn, muteBtn, hideBtn);
@@ -1388,14 +1158,9 @@
     }
   }
 
-  /* ============================================================
-   * MOD MENU (with search + filter + reload)
-   * ============================================================ */
   let menuEl = null;
   let menuLayout = localStorage.getItem('tt-modlayout') || 'list';
   let bundleInput = null;
-  let menuSearch = '';
-  let menuFilter = 'all';  // all | active | disabled | error
 
   function makeToggle(disabled, onToggle) {
     const t = document.createElement('button');
@@ -1446,12 +1211,12 @@
       padding:'24px', boxSizing:'border-box', overflow:'hidden'
     });
 
-    /* ---- header row ---- */
     const head = document.createElement('div');
-    head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;';
+    head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:8px;flex-wrap:wrap;';
+
     const h = document.createElement('h2');
     h.textContent = 'Mods';
-    h.style.cssText = 'margin:0;font-size:22px;flex:0 0 auto;';
+    h.style.cssText = 'margin:0;font-size:22px;flex:1;min-width:80px;';
 
     const anyDisabled = () => [...mods.values()].some(m => disabledMods.has(m.id));
     const mkHead = (label, title, fn, danger) => {
@@ -1462,13 +1227,20 @@
       b.addEventListener('click', fn);
       return b;
     };
+
     const storeBtnMenu = mkHead('📦 Store', 'Browse community mods', () => {
-      if (window.ModStore && typeof window.ModStore.open === 'function') window.ModStore.open();
-      else API.showToast('⚠️ mod-store.js not loaded');
+      if (window.ModStore && typeof window.ModStore.open === 'function') {
+        window.ModStore.open();
+      } else {
+        API.showToast('⚠️ mod-store.js not loaded');
+      }
     });
     const makerBtn = mkHead('🛠 Maker', 'Open the TTmod Maker / Editor', () => {
-      if (window.TtmodMaker && typeof window.TtmodMaker.open === 'function') window.TtmodMaker.open();
-      else API.showToast('ttmod-maker.js not loaded');
+      if (window.TtmodMaker && typeof window.TtmodMaker.open === 'function') {
+        window.TtmodMaker.open();
+      } else {
+        API.showToast('ttmod-maker.js not loaded');
+      }
     });
     const importBtn = mkHead('📦 Import .ttmod', 'Load a .ttmod bundle', () => {
       ensureBundleInput().click();
@@ -1487,63 +1259,21 @@
 
     head.append(h, storeBtnMenu, makerBtn, importBtn, toggleAllBtn, reloadBtn, resetBtn, layoutBtn, close);
 
-    /* ---- search + filter row ---- */
-    const searchRow = document.createElement('div');
-    searchRow.style.cssText = 'display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;';
-
-    const searchIn = document.createElement('input');
-    searchIn.type = 'text';
-    searchIn.placeholder = '🔍 Search mods by name, author, or description…';
-    searchIn.value = menuSearch;
-    searchIn.style.cssText =
-      'flex:1;min-width:200px;padding:8px 14px;background:#0d1117;color:#fff;border:1px solid #30363d;' +
-      'border-radius:6px;font-family:inherit;font-size:13px;';
-    searchIn.addEventListener('input', () => { menuSearch = searchIn.value; render(); });
-
-    const filterSel = document.createElement('select');
-    filterSel.style.cssText =
-      'padding:8px 12px;background:#0d1117;color:#fff;border:1px solid #30363d;' +
-      'border-radius:6px;font-family:inherit;font-size:13px;cursor:pointer;';
-    ['all', 'active', 'disabled', 'error'].forEach(v => {
-      const o = document.createElement('option');
-      o.value = v; o.textContent = 'Show: ' + v;
-      if (v === menuFilter) o.selected = true;
-      filterSel.appendChild(o);
-    });
-    filterSel.addEventListener('change', () => { menuFilter = filterSel.value; render(); });
-
-    searchRow.append(searchIn, filterSel);
-
     const container = document.createElement('div');
     container.style.cssText = 'overflow-y:auto;flex:1;';
-
-    root.append(head, searchRow, container);
+    root.append(head, container);
     document.body.appendChild(root);
-
-    function matchesFilters(m) {
-      if (menuSearch) {
-        const s = menuSearch.toLowerCase();
-        const hay = ((m.name || '') + ' ' + (m.author || '') + ' ' + (m.description || '')).toLowerCase();
-        if (!hay.includes(s)) return false;
-      }
-      if (menuFilter === 'all') return true;
-      if (menuFilter === 'active') return m.status === 'loaded';
-      if (menuFilter === 'disabled') return m.status === 'disabled';
-      if (menuFilter === 'error') return m.status === 'error';
-      return true;
-    }
 
     function render() {
       layoutBtn.textContent = menuLayout === 'list' ? '☷' : '▦';
       container.innerHTML = '';
-      const visible = [...mods.values()].filter(matchesFilters);
-      if (!visible.length) {
-        container.innerHTML = '<div style="opacity:.6;font-style:italic;padding:20px;text-align:center;">No mods match your filters.</div>';
+      if (!mods.size) {
+        container.innerHTML = '<div style="opacity:.6;font-style:italic">No mods found.</div>';
         return;
       }
       if (menuLayout === 'list') {
         container.style.cssText = 'overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:8px;';
-        for (const m of visible) {
+        for (const m of mods.values()) {
           const isOff = disabledMods.has(m.id);
           const isBundle = !!m._bundle;
           const hasSettings = Array.isArray(m.settings_schema) && m.settings_schema.length > 0;
@@ -1551,8 +1281,8 @@
           row.dataset.ttOur = '1';
           row.style.cssText =
             `display:flex;align-items:center;gap:14px;background:${isOff ? '#15171c' : '#1c1f24'};` +
-            `border:1px solid ${m.status === 'error' ? '#8b2d2d' : (isOff ? '#2a2d33' : '#333')};` +
-            `border-radius:8px;padding:12px 16px;opacity:${isOff ? 0.55 : 1};`;
+            `border:1px solid ${isOff ? '#2a2d33' : '#333'};border-radius:8px;padding:12px 16px;` +
+            `opacity:${isOff ? 0.55 : 1};`;
           const thumb = document.createElement('div');
           thumb.style.cssText = 'width:56px;height:56px;flex:0 0 56px;border-radius:6px;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center;font-size:24px;';
           if (m.iconUrl) {
@@ -1560,6 +1290,7 @@
             i.style.cssText = 'width:100%;height:100%;object-fit:cover;';
             thumb.appendChild(i);
           } else thumb.textContent = isBundle ? '📦' : '🔧';
+
           const info = document.createElement('div');
           info.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;';
           info.innerHTML =
@@ -1568,25 +1299,14 @@
             `</div>` +
             `<div style="font-size:12px;opacity:.7">v${m.version} · ${m.author}</div>` +
             `<div style="font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.description || ''}</div>`;
+
           const status = document.createElement('div');
-          status.style.cssText = 'font-size:11px;opacity:.55;text-align:right;min-width:90px;';
+          status.style.cssText = 'font-size:11px;opacity:.55;text-align:right;min-width:80px;';
           status.textContent = isOff ? 'disabled' :
             (m.status === 'error' ? ('Error: ' + (m.error?.message || '?')) : m.status);
 
           const actions = document.createElement('div');
           actions.style.cssText = 'display:flex;gap:6px;align-items:center;';
-
-          const reloadSingle = document.createElement('button');
-          reloadSingle.dataset.ttOur = '1';
-          reloadSingle.textContent = '↻';
-          reloadSingle.title = 'Reload this mod (re-run its main.js)';
-          reloadSingle.style.cssText = 'background:#333;color:#fff;border:1px solid #555;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;';
-          reloadSingle.addEventListener('click', async () => {
-            reloadSingle.textContent = '⏳';
-            try { await API.reloadMod(m.id); reloadSingle.textContent = '✅'; }
-            catch (e) { API.showToast('Reload failed: ' + e.message); reloadSingle.textContent = '↻'; }
-          });
-          actions.appendChild(reloadSingle);
 
           if (hasSettings) {
             const setBtn = document.createElement('button');
@@ -1597,6 +1317,7 @@
             setBtn.addEventListener('click', () => API.openSettings(m.id));
             actions.appendChild(setBtn);
           }
+
           const exp = document.createElement('button');
           exp.dataset.ttOur = '1';
           exp.textContent = '⤓';
@@ -1613,15 +1334,14 @@
         }
       } else {
         container.style.cssText = 'overflow-y:auto;flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;';
-        for (const m of visible) {
+        for (const m of mods.values()) {
           const isOff = disabledMods.has(m.id);
           const isBundle = !!m._bundle;
           const hasSettings = Array.isArray(m.settings_schema) && m.settings_schema.length > 0;
           const card = document.createElement('div');
           card.dataset.ttOur = '1';
           card.style.cssText =
-            `background:${isOff ? '#15171c' : '#1c1f24'};` +
-            `border:1px solid ${m.status === 'error' ? '#8b2d2d' : (isOff ? '#2a2d33' : '#333')};` +
+            `background:${isOff ? '#15171c' : '#1c1f24'};border:1px solid ${isOff ? '#2a2d33' : '#333'};` +
             `border-radius:8px;overflow:hidden;display:flex;flex-direction:column;opacity:${isOff ? 0.6 : 1};`;
           if (m.iconUrl) {
             const i = document.createElement('img'); i.src = m.iconUrl;
@@ -1640,18 +1360,6 @@
           const tw = document.createElement('div');
           tw.style.cssText = 'padding:0 12px 12px 12px;display:flex;justify-content:flex-end;gap:6px;';
 
-          const reloadSingle = document.createElement('button');
-          reloadSingle.dataset.ttOur = '1';
-          reloadSingle.textContent = '↻';
-          reloadSingle.title = 'Reload this mod';
-          reloadSingle.style.cssText = 'background:#333;color:#fff;border:1px solid #555;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;';
-          reloadSingle.addEventListener('click', async () => {
-            reloadSingle.textContent = '⏳';
-            try { await API.reloadMod(m.id); reloadSingle.textContent = '✅'; }
-            catch (e) { API.showToast('Reload failed: ' + e.message); reloadSingle.textContent = '↻'; }
-          });
-          tw.appendChild(reloadSingle);
-
           if (hasSettings) {
             const setBtn = document.createElement('button');
             setBtn.dataset.ttOur = '1';
@@ -1660,6 +1368,7 @@
             setBtn.addEventListener('click', () => API.openSettings(m.id));
             tw.appendChild(setBtn);
           }
+
           const exp = document.createElement('button');
           exp.dataset.ttOur = '1';
           exp.textContent = '⤓ Export';
@@ -1675,6 +1384,7 @@
         }
       }
     }
+
     return { root, render };
   }
 
@@ -1693,15 +1403,10 @@
       e.preventDefault();
       if (window.ModStore && typeof window.ModStore.open === 'function') {
         window.ModStore.open();
-      } else {
-        API.showToast('⚠️ mod-store.js not loaded');
       }
     }
   });
 
-  /* ============================================================
-   * STORE + CLAN BAR KILLERS
-   * ============================================================ */
   function killStoreIcons() {
     const TT = window.__TT__;
     if (!TT || !TT.bb) return false;
@@ -1738,9 +1443,6 @@
     }
   }
 
-  /* ============================================================
-   * MOD LOADING
-   * ============================================================ */
   async function loadManifest() {
     try {
       const res = await fetch(MANIFEST, { cache: 'no-store' });
@@ -1752,22 +1454,17 @@
 
   async function loadMod(id) {
     const basePath = MODS_DIR + id + '/';
-    const meta = Object.assign(makeEmptyMeta(), {
+    const meta = {
       id, basePath, name: id, version: '0.0.0', author: 'Unknown',
       description: '', icon: null, main: 'main.js',
       enabled: !disabledMods.has(id),
       status: 'loading', iconUrl: null, exports: {},
       settings: {}, settings_schema: []
-    });
-    meta._modApi = makeModApi(meta);
-
+    };
     try {
       const mRes = await fetch(basePath + 'mod.json', { cache: 'no-store' });
       if (mRes.ok) Object.assign(meta, await mRes.json());
       meta.id = id; meta.basePath = basePath;
-
-      /* --- Version checks --- */
-      validateVersions(meta);
 
       if (meta.icon) {
         try {
@@ -1783,7 +1480,7 @@
       }
       if (meta.enabled === false) {
         meta.status = 'disabled';
-        log(`⏸ Skipped (mod.json enabled=false): ${meta.name}`);
+        log(`⏸ Skipped (mod.json): ${meta.name}`);
         mods.set(id, meta); emit('modLoaded', meta); return meta;
       }
 
@@ -1794,7 +1491,9 @@
         const sRes = await fetch(basePath + meta.main, { cache: 'no-store' });
         if (!sRes.ok) throw new Error(`main script HTTP ${sRes.status}`);
         const code = await sRes.text();
-        await runModMain(code, meta);
+        const factory = new Function('api', 'mod',
+          `"use strict";\n${code}\n//# sourceURL=${basePath}${meta.main}`);
+        meta.exports = factory(API, meta) || {};
       }
       meta.status = 'loaded';
       log(`✅ Loaded: ${meta.name} (${id}) v${meta.version}` +
@@ -1809,7 +1508,12 @@
   }
 
   async function registerImportedMod(bundle) {
-    const meta = Object.assign(makeEmptyMeta(), {
+    // Skip if this mod is already registered
+    if (mods.has(bundle.id)) {
+      log(`⏸ Already loaded, skipping: ${bundle.id}`);
+      return mods.get(bundle.id);
+    }
+    const meta = {
       id: bundle.id, basePath: null,
       name: bundle.name || bundle.id,
       version: bundle.version || '1.0.0',
@@ -1821,27 +1525,25 @@
       iconUrl: bundle.assets && bundle.icon ? bundle.assets[bundle.icon] || null : null,
       exports: {}, _bundle: bundle,
       settings: {}, settings_schema: []
-    });
-    meta._modApi = makeModApi(meta);
-
+    };
+    if (disabledMods.has(bundle.id)) {
+      meta.status = 'disabled';
+      mods.set(bundle.id, meta);
+      emit('modLoaded', meta);
+      return meta;
+    }
     try {
-      /* version check */
-      validateVersions(bundle);
-
-      if (disabledMods.has(bundle.id)) {
-        meta.status = 'disabled';
-        mods.set(bundle.id, meta);
-        emit('modLoaded', meta);
-        return meta;
-      }
-      if (meta._bundle._translated && meta._bundle._translated.meta && Array.isArray(meta._bundle._translated.meta.settings)) {
+      if (meta._bundle._translated && meta._bundle._translated.meta &&
+          Array.isArray(meta._bundle._translated.meta.settings)) {
         meta.settings_schema = meta._bundle._translated.meta.settings;
       } else if (bundle.settings_schema) {
         meta.settings_schema = bundle.settings_schema;
       }
       meta.settings = loadSettingsFromStorage(bundle.id, meta.settings_schema);
 
-      await runModMain(bundle.main, meta);
+      const factory = new Function('api', 'mod',
+        `"use strict";\n${bundle.main}\n//# sourceURL=ttmod:${bundle.id}`);
+      meta.exports = factory(API, meta) || {};
       meta.status = 'loaded';
       log(`✅ Loaded .ttmod: ${meta.name} (${bundle.id}) v${meta.version}`);
     } catch (e) {
@@ -1881,78 +1583,80 @@
       out.push(await registerImportedMod(bundle));
     }
 
-    /* --- Resolve dependencies --- */
-    resolveDependencies();
-
-    /* --- Call init() on all loaded mods --- */
-    for (const meta of mods.values()) {
-      if (meta.status === 'loaded') setupMod(meta);
-    }
-
     emit('modsLoaded', out);
     return out;
   }
 
-  /* ============================================================
-   * MODS BUTTON
-   * ============================================================ */
   const MODS_BG_BASE  = 'linear-gradient(180deg,rgba(0,110,0,0.92) 0%,rgba(0,70,0,0.92) 100%)';
   const MODS_BG_HOVER = 'linear-gradient(180deg,rgba(0,160,0,0.95) 0%,rgba(0,90,0,0.95) 100%)';
+
   function injectModsButton() {
     const btns = getMainMenuButtons();
-    const existing = document.getElementById(MODS_BTN_ID);
     const input = document.getElementById('input0');
     const onMainMenu = isVisible(input);
     const anyGameBtnVisible = btns.some(isVisible);
+
+    /* remove our extra buttons when not on main menu */
     if (!onMainMenu || !anyGameBtnVisible) {
-      if (existing) existing.remove();
+      ['tt-mods-btn', 'tt-store-btn', 'tt-appearance-btn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+      });
       return;
     }
-    if (existing) return;
-    const btn = document.createElement('button');
-    btn.id = MODS_BTN_ID;
-    btn.dataset.ttOur = '1';
-    btn.dataset.ttLabel = 'Mods';
-    btn.type = 'button';
-    Object.assign(btn.style, {
-      color:'#fff', userSelect:'none', outline:'none', overflowWrap:'break-word',
-      background: MODS_BG_BASE, border:'2.2px solid #fff',
-      font: btns[0].style.font || '17.55px system-ui', padding:'0em 0.3em',
-      cursor:'pointer', textAlign:'center', lineHeight:'1.2'
+    if (!btns.length) return;
+    if (document.getElementById('tt-mods-btn')) return;
+
+    const baseFont = btns[0].style.font || '17.55px system-ui';
+    const make = (id, label, onClick) => {
+      const b = document.createElement('button');
+      b.id = id;
+      b.dataset.ttOur = '1';
+      b.dataset.ttLabel = label;
+      b.type = 'button';
+      b.innerHTML = label;
+      Object.assign(b.style, {
+        color:'#fff', userSelect:'none', outline:'none', overflowWrap:'break-word',
+        background: MODS_BG_BASE, border:'2.2px solid #fff',
+        font: baseFont, padding:'0em 0.3em',
+        cursor:'pointer', textAlign:'center', lineHeight:'1.2'
+      });
+      b.addEventListener('mouseenter', () => { b.style.background = MODS_BG_HOVER; });
+      b.addEventListener('mouseleave', () => { b.style.background = MODS_BG_BASE; });
+      b.addEventListener('click', onClick);
+      document.body.appendChild(b);
+      return b;
+    };
+
+    make('tt-mods-btn', 'Mods', () => showMenu());
+    make('tt-store-btn', 'Mod Store', () => {
+      if (window.ModStore && typeof window.ModStore.open === 'function') {
+        window.ModStore.open();
+      } else {
+        API.showToast('⚠️ mod-store.js not loaded');
+      }
     });
-    btn.addEventListener('mouseenter', () => { btn.style.background = MODS_BG_HOVER; });
-    btn.addEventListener('mouseleave', () => { btn.style.background = MODS_BG_BASE; });
-    btn.addEventListener('click', () => showMenu());
-    document.body.appendChild(btn);
+    make('tt-appearance-btn', 'Appearance', () => {
+      if (window.TerritorialAppearance && typeof window.TerritorialAppearance.open === 'function') {
+        window.TerritorialAppearance.open();
+      } else {
+        API.showToast('appearance.js not loaded');
+      }
+    });
   }
 
-  /* ============================================================
-   * SCREEN CHANGE DETECTION + GAME EVENTS
-   * ============================================================ */
   let lastScreenState = null;
-  let lastMatchState  = null;
   function detectScreenChange() {
     const input = document.getElementById('input0');
     const onMenu = isVisible(input);
-    if (lastScreenState === null) { lastScreenState = onMenu; }
-    else if (lastScreenState !== onMenu) {
+    if (lastScreenState === null) { lastScreenState = onMenu; return; }
+    if (lastScreenState !== onMenu) {
       lastScreenState = onMenu;
       fadeTransition(220);
       emit('screenChanged', onMenu ? 'menu' : 'game');
     }
-
-    /* Also detect match start/end */
-    const inMatch = API.isInMatch();
-    if (lastMatchState === null) { lastMatchState = inMatch; }
-    else if (lastMatchState !== inMatch) {
-      lastMatchState = inMatch;
-      emit('game:' + (inMatch ? 'start' : 'end'));
-    }
   }
 
-  /* ============================================================
-   * BOOT
-   * ============================================================ */
   function boot() {
     applyTheme(API.getTheme());
 
@@ -1969,7 +1673,6 @@
       document.head.appendChild(link);
     }
 
-    /* Ripple + glow */
     (function installRipple(){
       if (window.__ttRippleInstalled) return;
       window.__ttRippleInstalled = true;
@@ -2028,8 +1731,7 @@
     loadAll().then(list => {
       const active = list.filter(m => m.status === 'loaded').length;
       const off    = list.filter(m => m.status === 'disabled').length;
-      const errs   = list.filter(m => m.status === 'error').length;
-      log(`Done. Active: ${active}, Disabled: ${off}, Errors: ${errs}. Press F10 to toggle, F8 for store.`);
+      log(`Done. Active: ${active}, Disabled: ${off}. Press F10 for mods, F8 for store.`);
       emit('ready', list);
     });
   }

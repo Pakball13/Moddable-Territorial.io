@@ -1,695 +1,905 @@
 /* ============================================================
- * client-features.js  —  Modatorial.io feature bundle v2.0
- *  1. Loadout Profiles
- *  2. Replay Theater
- *  3. Achievements & Badges
- *  4. Custom Sound Packs
- *  5. Live Stats Overlay
- *  6. Share Setup via URL
- *  7. Discord Rich Presence (web stub)
- *  8. Announcer Voice Packs
- *  9. Speedrun Mode
- * 10. Misc (screenshots, birthday mode, etc.)
+ * client-features.js — v2.0.3 — Modatorial.io
+ * Chrome bar, themes, audio, achievements, speedrun, accounts.
+ * Sign-in button now redirects to /login.html (much more reliable
+ * than the in-game modal).
  * ============================================================ */
 (function (global) {
   'use strict';
 
-  const PFX = '%c[Features]';
-  const STY = 'color:#9cf;font-weight:bold';
-  const log   = (...a) => console.log(PFX, STY, ...a);
-  const warn  = (...a) => console.warn(PFX, STY, ...a);
-  const error = (...a) => console.error(PFX, STY, ...a);
+  const VERSION = '2.0.3';
+  const MAX_ACCOUNTS = 3;
 
-  const API = global.TerritorialMods;
-  if (!API) { warn('ModLoader not found — client-features.js skipped'); return; }
-
-  /* ============================================================
-   * 1. LOADOUT PROFILES
-   * ============================================================ */
-  const PROFILES_KEY = 'tt-profiles';
-  const ACTIVE_KEY   = 'tt-active-profile';
-
-  function readProfiles() {
-    try { return JSON.parse(localStorage.getItem(PROFILES_KEY) || '{}'); }
-    catch { return {}; }
-  }
-  function saveProfiles(p) {
-    localStorage.setItem(PROFILES_KEY, JSON.stringify(p));
-  }
-
-  const Profiles = {
-    list() { return Object.keys(readProfiles()); },
-    save(name) {
-      if (!name) throw new Error('Profile name required');
-      const rawDisabled = localStorage.getItem('tt-disabled-mods');
-      let disabled = [];
-      try { disabled = rawDisabled ? JSON.parse(rawDisabled) : []; } catch {}
-      const snap = {
-        disabled,
-        theme:    localStorage.getItem('tt-theme') || 'midnight',
-        layout:   localStorage.getItem('tt-layout') || 'sidebar',
-        sidebar:  localStorage.getItem('tt-sidebar-collapsed') || '0',
-        username: (document.getElementById('input0') || {}).value || '',
-        hidden:   localStorage.getItem('tt-hidemenu') || '1',
-        ts:       Date.now()
-      };
-      const p = readProfiles();
-      p[name] = snap;
-      saveProfiles(p);
-      localStorage.setItem(ACTIVE_KEY, name);
-      return true;
-    },
-    load(name) {
-      const p = readProfiles();
-      const s = p[name];
-      if (!s) throw new Error('No such profile');
-      localStorage.setItem('tt-disabled-mods', JSON.stringify(s.disabled || []));
-      localStorage.setItem('tt-theme', s.theme || 'midnight');
-      localStorage.setItem('tt-layout', s.layout || 'sidebar');
-      localStorage.setItem('tt-sidebar-collapsed', s.sidebar || '0');
-      localStorage.setItem('tt-hidemenu', s.hidden || '1');
-      if (s.username && document.getElementById('input0')) {
-        document.getElementById('input0').value = s.username;
-      }
-      localStorage.setItem(ACTIVE_KEY, name);
-      location.reload();
-    },
-    remove(name) {
-      const p = readProfiles();
-      delete p[name];
-      saveProfiles(p);
-      if (localStorage.getItem(ACTIVE_KEY) === name) localStorage.removeItem(ACTIVE_KEY);
-    },
-    active() { return localStorage.getItem(ACTIVE_KEY); }
+  const KEYS = {
+    theme: 'tt-theme', layout: 'tt-layout', audio: 'tt-audio',
+    achievements: 'tt-achievements', speedrunPB: 'tt-speedrun-pb',
+    matchHistory: 'tt-match-history', stats: 'tt-profile-stats',
+    accounts: 'tt-accounts', chromeHidden: 'tt-chrome-hidden',
+    sidebarCollapsed: 'tt-sidebar-collapsed', seenIntro: 'tt-seen-intro'
   };
 
-  function injectProfilesButton() {
-    const chrome = document.getElementById('tt-chrome');
-    if (!chrome || chrome.querySelector('[data-tt-feature="profiles"]')) return;
-    const btn = document.createElement('button');
-    btn.dataset.ttOur = '1';
-    btn.dataset.ttFeature = 'profiles';
-    btn.textContent = '📁';
-    btn.title = 'Manage loadout profiles';
-    Object.assign(btn.style, {
-      background: 'rgba(255,255,255,0.06)', color: '#e8eaf0',
-      border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
-      padding: '3px 10px', fontFamily: 'inherit', fontSize: '12px',
-      cursor: 'pointer'
-    });
-    btn.addEventListener('click', openProfilesModal);
-    const hideBtn = chrome.querySelector('button[title="Hide chrome"]');
-    if (hideBtn) chrome.insertBefore(btn, hideBtn);
-    else chrome.appendChild(btn);
+  const THEMES = [
+    { id:'midnight',   label:'Midnight',   icon:'🌙', vars:{accent:'#3fb950',background:'#0a0c10',text:'#e6edf3',surface:'#16181d'} },
+    { id:'forest',     label:'Forest',     icon:'🌲', vars:{accent:'#8bc34a',background:'#0d1f0d',text:'#e8f5e9',surface:'#1a2a1a'} },
+    { id:'cyberpunk',  label:'Cyberpunk',  icon:'🌆', vars:{accent:'#00ffff',background:'#0a0014',text:'#f0f0ff',surface:'#1a0a2e'} },
+    { id:'mono',       label:'Monochrome', icon:'◼️', vars:{accent:'#dddddd',background:'#000000',text:'#ffffff',surface:'#1a1a1a'} },
+    { id:'sunset',     label:'Sunset',     icon:'🌅', vars:{accent:'#ff8844',background:'#1a0a1e',text:'#ffe8d6',surface:'#2a1028'} },
+    { id:'ocean',      label:'Ocean',      icon:'🌊', vars:{accent:'#4dd0e1',background:'#0a1929',text:'#e0f7fa',surface:'#152b40'} },
+    { id:'modatorial', label:'Modatorial', icon:'⬢',  vars:{accent:'#00F5D4',background:'#0F172A',text:'#e6edf3',surface:'#1E293B'} }
+  ];
+
+  const ACHIEVEMENTS = [
+    { id:'first-launch',   icon:'🚀', name:'First Steps',     desc:'Launch Modatorial.io for the first time.' },
+    { id:'mod-enthusiast', icon:'🧩', name:'Mod Enthusiast',  desc:'Install 3 mods.' },
+    { id:'mod-addict',     icon:'🔥', name:'Mod Addict',      desc:'Install 10 mods.' },
+    { id:'designer',       icon:'🎨', name:'Designer',        desc:'Change your theme.' },
+    { id:'photographer',   icon:'📸', name:'Photographer',    desc:'Take your first screenshot.' },
+    { id:'speedrunner',    icon:'⏱️', name:'Speedrunner',     desc:'Complete a match under 2 minutes.' },
+    { id:'centurion',      icon:'💯', name:'Centurion',       desc:'Play 100 matches.' },
+    { id:'level-5',        icon:'⭐', name:'Rising Star',     desc:'Reach level 5.' },
+    { id:'level-10',       icon:'🌟', name:'Veteran',         desc:'Reach level 10.' },
+    { id:'publisher',      icon:'📦', name:'Publisher',       desc:'Publish your first mod.' },
+    { id:'collector',      icon:'🏆', name:'Collector',       desc:'Unlock 5 achievements.' },
+    { id:'completionist',  icon:'👑', name:'Completionist',   desc:'Unlock every achievement.' }
+  ];
+
+  const log  = (...a) => console.log  ('%c[Features]', 'color:#3fb950;font-weight:bold', ...a);
+  const warn = (...a) => console.warn ('%c[Features]', 'color:#f0883e;font-weight:bold', ...a);
+  const err  = (...a) => console.error('%c[Features]', 'color:#f85149;font-weight:bold', ...a);
+
+  /* ── Defensive helpers ─────────────────────────────── */
+  function toArray(v) {
+    if (Array.isArray(v)) return v;
+    if (v && typeof v === 'object') return Object.values(v);
+    return [];
+  }
+  function toObject(v, fallback) {
+    if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+    return fallback || {};
+  }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+      ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
 
-  function openProfilesModal() {
-    const overlay = document.createElement('div');
-    overlay.dataset.ttOur = '1';
-    Object.assign(overlay.style, {
-      position: 'fixed', inset: '0', background: 'rgba(0,0,0,0.85)',
-      zIndex: 100006, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '20px'
-    });
-    const panel = document.createElement('div');
-    panel.style.cssText =
-      'background:#161b22;border:1px solid #30363d;border-radius:12px;' +
-      'padding:24px;max-width:520px;width:100%;max-height:80vh;overflow-y:auto;' +
-      'font-family:system-ui;color:#fff;';
-
-    const head = document.createElement('div');
-    head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;';
-    head.innerHTML = '<div style="font-size:18px;font-weight:700;">📁 Loadout Profiles</div>';
-
-    const close = document.createElement('button');
-    close.textContent = '✕';
-    close.style.cssText = 'background:none;border:0;color:#fff;font-size:18px;cursor:pointer;';
-    close.addEventListener('click', () => overlay.remove());
-    head.appendChild(close);
-    panel.appendChild(head);
-
-    const saveRow = document.createElement('div');
-    saveRow.style.cssText = 'display:flex;gap:8px;margin-bottom:16px;';
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = 'Profile name (e.g. Competitive)';
-    input.style.cssText = 'flex:1;padding:8px 12px;border-radius:6px;background:#0d1117;color:#fff;border:1px solid #30363d;font-family:inherit;';
-    const saveBtn = document.createElement('button');
-    saveBtn.textContent = '💾 Save';
-    saveBtn.style.cssText = 'background:#238636;color:#fff;border:1px solid #2ea043;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;font-family:inherit;';
-    saveBtn.addEventListener('click', () => {
+  /* ── Storage ────────────────────────────────────────── */
+  const store = {
+    get(k, fb) {
       try {
-        Profiles.save(input.value.trim());
-        overlay.remove();
-        API.showToast(`📁 Saved profile: ${input.value.trim()}`);
-      } catch (e) { alert(e.message); }
-    });
-    saveRow.append(input, saveBtn);
-    panel.appendChild(saveRow);
+        const v = localStorage.getItem(k);
+        if (v === null) return fb;
+        try { return JSON.parse(v); } catch { return v; }
+      } catch { return fb; }
+    },
+    set(k, v) {
+      try { localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v)); } catch {}
+    },
+    del(k) { try { localStorage.removeItem(k); } catch {} }
+  };
 
-    const list = document.createElement('div');
-    list.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
-    const names = Profiles.list();
-    const active = Profiles.active();
-    if (!names.length) {
-      list.innerHTML = '<div style="opacity:.5;font-style:italic;padding:20px;text-align:center;">No profiles yet. Save your current setup above.</div>';
-    } else {
-      names.forEach(n => {
-        const row = document.createElement('div');
-        row.style.cssText =
-          `display:flex;align-items:center;gap:10px;padding:10px 14px;` +
-          `background:${n === active ? 'rgba(63,185,80,.15)' : '#0d1117'};` +
-          `border:1px solid ${n === active ? '#3fb950' : '#21262d'};border-radius:8px;`;
-        const label = document.createElement('div');
-        label.textContent = (n === active ? '★ ' : '') + n;
-        label.style.cssText = 'flex:1;font-weight:600;';
-        const loadBtn = document.createElement('button');
-        loadBtn.textContent = '▶ Load';
-        loadBtn.style.cssText = 'background:#238636;color:#fff;border:1px solid #2ea043;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;';
-        loadBtn.addEventListener('click', () => Profiles.load(n));
-        const delBtn = document.createElement('button');
-        delBtn.textContent = '🗑';
-        delBtn.style.cssText = 'background:#4a1616;color:#fff;border:1px solid #8b2d2d;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;';
-        delBtn.addEventListener('click', () => {
-          if (!confirm(`Delete profile "${n}"?`)) return;
-          Profiles.remove(n);
-          overlay.remove();
-          openProfilesModal();
-        });
-        row.append(label, loadBtn, delBtn);
-        list.appendChild(row);
+  /* ── Toast ──────────────────────────────────────────── */
+  function Toast(msg, ms) {
+    ms = ms || 3000;
+    const el = document.createElement('div');
+    el.textContent = msg;
+    Object.assign(el.style, {
+      position:'fixed', left:'50%', bottom:'80px', transform:'translateX(-50%)',
+      background:'rgba(0,0,0,.9)', color:'#fff', padding:'10px 20px',
+      borderRadius:'8px', font:'500 13px system-ui', zIndex: 999999,
+      pointerEvents:'none', transition:'opacity .3s',
+      boxShadow:'0 4px 20px rgba(0,0,0,.5)'
+    });
+    document.body.appendChild(el);
+    setTimeout(() => { el.style.opacity = '0';
+                       setTimeout(() => el.remove(), 300); }, ms);
+  }
+
+  /* ── Theme ──────────────────────────────────────────── */
+  const Theme = {
+    current: (() => {
+      const v = store.get(KEYS.theme, 'midnight');
+      return typeof v === 'string' ? v : 'midnight';
+    })(),
+    apply(id) {
+      const t = THEMES.find(x => x.id === id) || THEMES[0];
+      this.current = t.id;
+      store.set(KEYS.theme, t.id);
+      const r = document.documentElement;
+      r.style.setProperty('--accent', t.vars.accent);
+      r.style.setProperty('--background', t.vars.background);
+      r.style.setProperty('--text', t.vars.text);
+      r.style.setProperty('--surface', t.vars.surface);
+    },
+    cycle() {
+      const i = THEMES.findIndex(x => x.id === this.current);
+      const n = THEMES[(i + 1) % THEMES.length];
+      this.apply(n.id);
+      Achievements.unlock('designer');
+      Toast('🎨 ' + n.icon + ' ' + n.label);
+    }
+  };
+
+  /* ── Audio ──────────────────────────────────────────── */
+  const Audio_ = (() => {
+    const saved = toObject(store.get(KEYS.audio, {}), {});
+    return {
+      ctx: null,
+      muted: !!saved.muted,
+      volume: typeof saved.volume === 'number' ? saved.volume : 0.7,
+      ensure() {
+        if (this.ctx) return this.ctx;
+        try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+        return this.ctx;
+      },
+      play(name, freq, dur, type) {
+        if (this.muted) return;
+        const ctx = this.ensure(); if (!ctx) return;
+        if (ctx.state === 'suspended') { try { ctx.resume(); } catch {} }
+        try {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = type || 'sine';
+          osc.frequency.value = freq || 440;
+          gain.gain.value = this.volume * 0.15;
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (dur || 0.08));
+          osc.connect(gain).connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + (dur || 0.08));
+        } catch {}
+      },
+      save() { store.set(KEYS.audio, { volume: this.volume, muted: this.muted }); },
+      toggleMute() { this.muted = !this.muted; this.save(); return this.muted; }
+    };
+  })();
+
+  ['click','keydown','touchstart'].forEach(evt => {
+    window.addEventListener(evt, () => {
+      Audio_.ensure();
+      try { if (Audio_.ctx && Audio_.ctx.state === 'suspended') Audio_.ctx.resume(); } catch {}
+    }, { once: true });
+  });
+
+  /* ── Achievements ──────────────────────────────────── */
+  const Achievements = {
+    unlocked: new Set(toArray(store.get(KEYS.achievements)).filter(x => typeof x === 'string')),
+    unlock(id) {
+      if (this.unlocked.has(id)) return false;
+      const a = ACHIEVEMENTS.find(x => x.id === id);
+      if (!a) return false;
+      this.unlocked.add(id);
+      store.set(KEYS.achievements, [...this.unlocked]);
+      Toast('🏆 ' + a.icon + ' ' + a.name);
+      Audio_.play('unlock', 880, 0.12);
+      if (this.unlocked.size >= 5) this.unlock('collector');
+      if (this.unlocked.size >= ACHIEVEMENTS.length - 1) this.unlock('completionist');
+      return true;
+    },
+    has(id) { return this.unlocked.has(id); },
+    count() { return this.unlocked.size; },
+    total() { return ACHIEVEMENTS.length; }
+  };
+
+  /* ── Speedrun ──────────────────────────────────────── */
+  const Speedrun = {
+    running: false, startTime: 0, elapsed: 0, intervalId: null,
+    pb: store.get(KEYS.speedrunPB, null), overlay: null,
+    start() {
+      if (this.running) return;
+      this.running = true;
+      this.startTime = performance.now();
+      this.elapsed = 0;
+      this._ensureOverlay();
+      this.intervalId = setInterval(() => this._tick(), 33);
+      this.overlay.style.display = 'block';
+    },
+    stop() {
+      if (!this.running) return;
+      this.running = false;
+      clearInterval(this.intervalId);
+      const t = this.elapsed;
+      if (!this.pb || t < this.pb) {
+        this.pb = t; store.set(KEYS.speedrunPB, t);
+        Toast('⏱️ New PB: ' + this._fmt(t));
+      } else Toast('⏱️ ' + this._fmt(t) + ' (PB: ' + this._fmt(this.pb) + ')');
+      if (t < 120000) Achievements.unlock('speedrunner');
+      if (this.overlay) this.overlay.style.display = 'none';
+    },
+    _tick() {
+      this.elapsed = performance.now() - this.startTime;
+      if (this.overlay) this.overlay.textContent = this._fmt(this.elapsed);
+    },
+    _fmt(ms) {
+      const s = Math.floor(ms / 1000);
+      const m = Math.floor(s / 60);
+      const cs = Math.floor((ms % 1000) / 10);
+      return String(m).padStart(2,'0') + ':' +
+             String(s % 60).padStart(2,'0') + '.' +
+             String(cs).padStart(2,'0');
+    },
+    _ensureOverlay() {
+      if (this.overlay) return;
+      this.overlay = document.createElement('div');
+      Object.assign(this.overlay.style, {
+        position:'fixed', top:'70px', left:'50%', transform:'translateX(-50%)',
+        zIndex: 99997, background:'rgba(0,0,0,.85)', color:'#3fb950',
+        padding:'10px 24px', borderRadius:'10px',
+        font:'700 24px "SF Mono",Menlo,monospace', letterSpacing:'2px',
+        display:'none', border:'1px solid #3fb950', pointerEvents:'none'
+      });
+      this.overlay.textContent = '00:00.00';
+      document.body.appendChild(this.overlay);
+    }
+  };
+
+  /* ── Screenshot ────────────────────────────────────── */
+  function Screenshot() {
+    const canvas = document.getElementById('canvasA') ||
+                   document.querySelector('canvas');
+    if (!canvas) return Toast('❌ No canvas found');
+    try {
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+        a.href = url;
+        a.download = 'modatorial-' + ts + '.png';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        Achievements.unlock('photographer');
+        Toast('📸 Screenshot saved');
+        Audio_.play('success', 660, 0.15);
+      });
+    } catch (e) {
+      Toast('❌ Screenshot failed: ' + e.message);
+    }
+  }
+
+  /* ── Stats ─────────────────────────────────────────── */
+  const Stats = {
+    data: (() => {
+      const d = toObject(store.get(KEYS.stats, {}), {});
+      return {
+        games:  typeof d.games === 'number' ? d.games : 0,
+        wins:   typeof d.wins  === 'number' ? d.wins  : 0,
+        xp:     typeof d.xp    === 'number' ? d.xp    : 0,
+        level:  typeof d.level === 'number' ? d.level : 0
+      };
+    })(),
+    record(result, duration, xpEarned) {
+      this.data.games++;
+      if (result === 'win') this.data.wins++;
+      this.data.xp += xpEarned;
+      const nl = Math.floor(Math.sqrt(this.data.xp / 50));
+      if (nl > this.data.level) {
+        this.data.level = nl;
+        Toast('🎉 Level ' + nl + '!');
+        if (nl >= 5)  Achievements.unlock('level-5');
+        if (nl >= 10) Achievements.unlock('level-10');
+      }
+      if (this.data.games >= 100) Achievements.unlock('centurion');
+      store.set(KEYS.stats, this.data);
+    }
+  };
+
+  /* ── Accounts ──────────────────────────────────────── */
+  const Accounts = {
+    list() {
+      try {
+        const raw = localStorage.getItem(KEYS.accounts);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter(a => a && typeof a === 'object' && a.uid);
+      } catch { return []; }
+    },
+    save(list) {
+      try {
+        const safe = toArray(list).slice(0, MAX_ACCOUNTS);
+        localStorage.setItem(KEYS.accounts, JSON.stringify(safe));
+      } catch {}
+      emitChange();
+    },
+    current() {
+      try { return global.Auth && global.Auth.current ? global.Auth.current() : null; }
+      catch { return null; }
+    },
+    remember(user) {
+      if (!user || !user.uid) return;
+      const list = this.list().filter(a => a.uid !== user.uid);
+      list.unshift({
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || user.username || user.email || 'User',
+        username: user.username || '',
+        photoURL: user.photoURL || null,
+        lastUsed: Date.now()
+      });
+      this.save(list);
+    },
+    forget(uid) { this.save(this.list().filter(a => a.uid !== uid)); },
+    isCurrent(uid) {
+      const c = this.current();
+      return c && c.uid === uid;
+    },
+    hasRoom() { return this.list().length < MAX_ACCOUNTS; },
+
+    /* Switch: sign out and redirect to login for the target email */
+    async switchTo(uid) {
+      const target = this.list().find(a => a.uid === uid);
+      if (!target) return Toast('❌ Account not found');
+      if (this.isCurrent(uid)) return Toast('Already signed in');
+      if (!global.Auth) return Toast('❌ Auth not available');
+      try {
+        if (this.current()) await global.Auth.logout();
+        // Store hint so login page can prefill the email
+        sessionStorage.setItem('tt-login-hint', target.email);
+        location.href = 'login.html?next=' + encodeURIComponent(location.pathname);
+      } catch (e) {
+        Toast('❌ ' + e.message);
+      }
+    },
+
+    /* Add: sign out, go to signup page */
+    async add() {
+      if (!this.hasRoom()) return Toast('Maximum ' + MAX_ACCOUNTS + ' accounts');
+      if (!global.Auth) return Toast('❌ Auth not available');
+      if (this.current()) {
+        if (!confirm('Adding an account will sign you out. Continue?')) return;
+        await global.Auth.logout();
+      }
+      location.href = 'signup.html?next=' + encodeURIComponent(location.pathname);
+    },
+
+    _listeners: new Set(),
+    onChange(fn) { this._listeners.add(fn); return () => this._listeners.delete(fn); }
+  };
+
+  function emitChange() {
+    for (const fn of Accounts._listeners) {
+      try { fn(Accounts.list()); } catch (e) { warn(e); }
+    }
+  }
+
+  /* ── My Account Modal ──────────────────────────────── */
+  let accountModal = null;
+
+  function openAccountModal() {
+    if (accountModal) {
+      accountModal.style.display = 'flex';
+      refreshAccountModal();
+      return;
+    }
+
+    accountModal = document.createElement('div');
+    accountModal.id = 'tt-account-modal';
+    Object.assign(accountModal.style, {
+      position:'fixed', inset:0, zIndex: 250000,
+      background:'rgba(0,0,0,.85)', backdropFilter:'blur(8px)',
+      display:'flex', alignItems:'center', justifyContent:'center'
+    });
+
+    accountModal.innerHTML =
+      '<div style="width:min(560px,92vw);max-height:88vh;' +
+      'background:#16181d;border:1px solid #262a31;border-radius:14px;' +
+      'color:#e6edf3;font-family:system-ui;display:flex;' +
+      'flex-direction:column;overflow:hidden;box-sizing:border-box;' +
+      'box-shadow:0 20px 60px rgba(0,0,0,.6)">' +
+        '<div style="display:flex;justify-content:space-between;' +
+        'align-items:center;padding:18px 24px;border-bottom:1px solid #262a31">' +
+          '<h2 style="margin:0;font-size:18px">👤 My Account</h2>' +
+          '<button id="tt-acct-close" style="background:transparent;color:#8b949e;' +
+          'border:0;font:600 20px system-ui;cursor:pointer">✕</button>' +
+        '</div>' +
+        '<div id="tt-acct-body" style="padding:20px 24px;overflow-y:auto;flex:1"></div>' +
+      '</div>';
+    document.body.appendChild(accountModal);
+
+    accountModal.querySelector('#tt-acct-close').onclick = () =>
+      accountModal.style.display = 'none';
+    accountModal.addEventListener('click', e => {
+      if (e.target === accountModal) accountModal.style.display = 'none';
+    });
+
+    refreshAccountModal();
+    Accounts.onChange(refreshAccountModal);
+    if (global.Auth && global.Auth.onChange) global.Auth.onChange(refreshAccountModal);
+  }
+
+  function refreshAccountModal() {
+    if (!accountModal) return;
+    const body = accountModal.querySelector('#tt-acct-body');
+    if (!body) return;
+
+    const user = Accounts.current();
+    const list = Accounts.list();
+    const displayList = [...list];
+    if (user && !displayList.find(a => a.uid === user.uid)) {
+      displayList.unshift({
+        uid: user.uid, email: user.email || '',
+        displayName: user.displayName || user.email || 'You',
+        username: user.username || '',
+        photoURL: user.photoURL || null, lastUsed: Date.now()
       });
     }
-    panel.appendChild(list);
-    overlay.appendChild(panel);
-    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-    document.body.appendChild(overlay);
-  }
 
-  /* ============================================================
-   * 2. REPLAY THEATER
-   * ============================================================ */
-  let theaterBar = null;
-  let theaterRAF = null;
-  let playbackSpeed = 1;
+    body.innerHTML =
+      (user ? renderCurrentUserCard(user) : renderSignedOutCard()) +
+      '<h3 style="margin:24px 0 10px;font-size:13px;color:#8b949e;' +
+      'text-transform:uppercase;letter-spacing:.6px">' +
+        'Saved accounts (' + displayList.length + '/' + MAX_ACCOUNTS + ')</h3>' +
+      '<div>' + displayList.map(renderAccountRow).join('') + '</div>' +
+      (Accounts.hasRoom()
+        ? '<button id="tt-acct-add" style="width:100%;margin-top:12px;' +
+          'padding:12px;background:transparent;color:#3fb950;' +
+          'border:1px dashed #3fb950;border-radius:8px;' +
+          'font:600 13px system-ui;cursor:pointer">+ Add another account</button>'
+        : '<div style="text-align:center;color:#6e7681;font-size:11px;' +
+          'margin-top:12px;font-style:italic">' +
+          'Account limit reached (' + MAX_ACCOUNTS + ' max).</div>') +
+      (user
+        ? '<button id="tt-acct-logout" style="width:100%;margin-top:16px;' +
+          'padding:12px;background:#8b2626;color:#fff;border:0;' +
+          'border-radius:8px;font:600 13px system-ui;cursor:pointer">' +
+          'Sign out of ' + escapeHtml(user.displayName || user.email) + '</button>'
+        : '');
 
-  function buildTheaterBar() {
-    if (theaterBar) return theaterBar;
-    const bar = document.createElement('div');
-    bar.dataset.ttOur = '1';
-    Object.assign(bar.style, {
-      position: 'fixed', bottom: '20px', left: '50%',
-      transform: 'translateX(-50%)',
-      background: 'rgba(13,17,23,0.95)',
-      border: '1px solid #30363d',
-      borderRadius: '10px',
-      padding: '10px 16px',
-      display: 'none', gap: '10px', alignItems: 'center',
-      zIndex: 99997, fontFamily: 'system-ui', color: '#fff',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.5)'
+    const addBtn = body.querySelector('#tt-acct-add');
+    if (addBtn) addBtn.onclick = () => Accounts.add();
+
+    const logoutBtn = body.querySelector('#tt-acct-logout');
+    if (logoutBtn) logoutBtn.onclick = async () => {
+      if (confirm('Sign out?')) {
+        if (global.Auth && global.Auth.logout) await global.Auth.logout();
+        refreshAccountModal();
+      }
+    };
+
+    const signInBtn = body.querySelector('#tt-acct-signin');
+    if (signInBtn) signInBtn.onclick = () => {
+      location.href = 'login.html?next=' + encodeURIComponent(location.pathname);
+    };
+
+    body.querySelectorAll('[data-switch]').forEach(b => {
+      b.onclick = () => Accounts.switchTo(b.dataset.switch);
+    });
+    body.querySelectorAll('[data-remove]').forEach(b => {
+      b.onclick = () => {
+        const uid = b.dataset.remove;
+        if (Accounts.isCurrent(uid)) return Toast('❌ Sign out first');
+        if (!confirm('Remove this account from the list?\n' +
+                     '(The Firebase account itself is not deleted)')) return;
+        Accounts.forget(uid);
+      };
     });
 
-    const mkBtn = (label, title, onClick) => {
+    const editBtn = body.querySelector('#tt-acct-edit');
+    if (editBtn) editBtn.onclick = openProfileEditor;
+  }
+
+  function renderCurrentUserCard(user) {
+    const initial = ((user.displayName || user.email || '?')[0] || '?').toUpperCase();
+    return '<div style="display:flex;gap:16px;align-items:center;' +
+      'padding:16px;background:#0d1117;border-radius:10px;' +
+      'border:1px solid #262a31">' +
+        '<div style="width:64px;height:64px;border-radius:50%;' +
+        'background:linear-gradient(135deg,#238636,#3fb950);' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'font:700 24px system-ui;color:#fff;flex-shrink:0">' +
+          escapeHtml(initial) +
+        '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font:700 16px system-ui;margin-bottom:2px">' +
+            escapeHtml(user.displayName || 'Unnamed') +
+            '<span style="font-size:11px;color:#3fb950;margin-left:6px">● active</span>' +
+          '</div>' +
+          '<div style="font:400 12px system-ui;color:#8b949e;' +
+          'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
+            escapeHtml(user.email || '') + '</div>' +
+          (user.username ? '<div style="font:400 12px system-ui;color:#8b949e">' +
+            '@' + escapeHtml(user.username) + '</div>' : '') +
+          (user.phone ? '<div style="font:400 12px system-ui;color:#8b949e">' +
+            '📞 ' + escapeHtml(user.phone) + '</div>' : '') +
+        '</div>' +
+        '<button id="tt-acct-edit" style="padding:8px 14px;background:transparent;' +
+        'color:#3fb950;border:1px solid #3fb950;border-radius:8px;' +
+        'font:600 12px system-ui;cursor:pointer">Edit profile</button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;' +
+      'gap:8px;margin-top:12px">' +
+        statBox('Games', Stats.data.games) +
+        statBox('Wins', Stats.data.wins) +
+        statBox('Level', Stats.data.level) +
+      '</div>' +
+      '<div style="margin-top:16px">' +
+        '<div style="font:600 11px system-ui;color:#8b949e;' +
+        'text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">' +
+          '🏆 Achievements (' + Achievements.count() + '/' + Achievements.total() + ')</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px">' +
+          ACHIEVEMENTS.map(a => {
+            const has = Achievements.has(a.id);
+            return '<span title="' + escapeHtml(a.name + ': ' + a.desc) + '" ' +
+              'style="font-size:18px;padding:4px 8px;border-radius:6px;' +
+              'background:' + (has ? '#1a2a1a' : '#0d1117') + ';' +
+              'opacity:' + (has ? 1 : 0.35) + ';' +
+              'filter:' + (has ? 'none' : 'grayscale(1)') + '">' +
+              a.icon + '</span>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+  }
+
+  function statBox(label, value) {
+    return '<div style="padding:12px;background:#0d1117;border-radius:8px;text-align:center">' +
+      '<div style="font:700 20px system-ui;color:#3fb950">' + value + '</div>' +
+      '<div style="font:400 11px system-ui;color:#8b949e;margin-top:2px">' +
+        escapeHtml(label) + '</div></div>';
+  }
+
+  function renderSignedOutCard() {
+    return '<div style="text-align:center;padding:32px 16px;' +
+      'background:#0d1117;border-radius:10px;border:1px dashed #30363d">' +
+        '<div style="font-size:48px;margin-bottom:12px">👤</div>' +
+        '<div style="font:600 15px system-ui;margin-bottom:4px">' +
+          'You&#39;re not signed in</div>' +
+        '<div style="font:400 12px system-ui;color:#8b949e;margin-bottom:16px">' +
+          'Sign in to publish mods and save your progress.</div>' +
+        '<button id="tt-acct-signin" style="padding:10px 24px;background:#238636;' +
+        'color:#fff;border:0;border-radius:8px;font:600 13px system-ui;' +
+        'cursor:pointer">Sign in / Create account</button>' +
+      '</div>';
+  }
+
+  function renderAccountRow(a) {
+    const isCurrent = Accounts.isCurrent(a.uid);
+    const initial = ((a.displayName || a.email || '?')[0] || '?').toUpperCase();
+    return '<div style="display:flex;gap:12px;align-items:center;padding:12px;' +
+      'background:' + (isCurrent ? '#1a2a1a' : '#0d1117') + ';' +
+      'border-radius:8px;margin-bottom:8px;' +
+      'border:1px solid ' + (isCurrent ? '#3fb950' : '#262a31') + '">' +
+        '<div style="width:40px;height:40px;border-radius:50%;' +
+        'background:linear-gradient(135deg,#238636,#3fb950);' +
+        'display:flex;align-items:center;justify-content:center;' +
+        'font:700 16px system-ui;color:#fff;flex-shrink:0">' +
+          escapeHtml(initial) +
+        '</div>' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font:600 13px system-ui;white-space:nowrap;' +
+          'overflow:hidden;text-overflow:ellipsis">' +
+            escapeHtml(a.displayName || 'Unnamed') +
+            (isCurrent ? '<span style="color:#3fb950;font-size:10px"> · active</span>' : '') +
+          '</div>' +
+          '<div style="font:400 11px system-ui;color:#8b949e;white-space:nowrap;' +
+          'overflow:hidden;text-overflow:ellipsis">' +
+            escapeHtml(a.email || '') + '</div>' +
+        '</div>' +
+        (!isCurrent
+          ? '<button data-switch="' + a.uid + '" ' +
+            'style="padding:6px 12px;background:transparent;color:#3fb950;' +
+            'border:1px solid #3fb950;border-radius:6px;' +
+            'font:600 11px system-ui;cursor:pointer">Switch</button>' +
+            '<button data-remove="' + a.uid + '" title="Remove from list" ' +
+            'style="padding:6px 10px;background:transparent;color:#8b949e;' +
+            'border:1px solid #30363d;border-radius:6px;' +
+            'font:600 11px system-ui;cursor:pointer">✕</button>'
+          : '') +
+      '</div>';
+  }
+
+  function openProfileEditor() {
+    const user = Accounts.current();
+    if (!user) return Toast('❌ Not signed in');
+
+    const overlay = document.createElement('div');
+    Object.assign(overlay.style, {
+      position:'fixed', inset:0, zIndex: 260000,
+      background:'rgba(0,0,0,.85)', backdropFilter:'blur(6px)',
+      display:'flex', alignItems:'center', justifyContent:'center'
+    });
+    overlay.innerHTML =
+      '<div style="width:min(420px,92vw);background:#16181d;' +
+      'border:1px solid #262a31;border-radius:14px;color:#e6edf3;' +
+      'font-family:system-ui;padding:24px;box-sizing:border-box">' +
+        '<h3 style="margin:0 0 16px;font-size:16px">Edit profile</h3>' +
+        '<label style="display:block;font:600 11px system-ui;color:#8b949e;' +
+        'margin-bottom:4px">Display name</label>' +
+        '<input id="tt-pe-name" type="text" value="' +
+        escapeHtml(user.displayName || '') + '" ' +
+        'style="width:100%;box-sizing:border-box;padding:10px 12px;' +
+        'border-radius:8px;border:1px solid #30363d;background:#0d1117;' +
+        'color:#e6edf3;font:400 13px system-ui;margin-bottom:12px" />' +
+        '<label style="display:block;font:600 11px system-ui;color:#8b949e;' +
+        'margin-bottom:4px">Phone number</label>' +
+        '<input id="tt-pe-phone" type="tel" value="' + escapeHtml(user.phone || '') +
+        '" placeholder="+1 555 000 0000" ' +
+        'style="width:100%;box-sizing:border-box;padding:10px 12px;' +
+        'border-radius:8px;border:1px solid #30363d;background:#0d1117;' +
+        'color:#e6edf3;font:400 13px system-ui;margin-bottom:12px" />' +
+        '<label style="display:block;font:600 11px system-ui;color:#8b949e;' +
+        'margin-bottom:4px">Bio</label>' +
+        '<textarea id="tt-pe-bio" rows="3" style="width:100%;box-sizing:border-box;' +
+        'padding:10px 12px;border-radius:8px;border:1px solid #30363d;' +
+        'background:#0d1117;color:#e6edf3;font:400 13px system-ui;' +
+        'margin-bottom:16px;resize:vertical">' + escapeHtml(user.bio || '') +
+        '</textarea>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button id="tt-pe-save" style="flex:1;padding:10px;background:#238636;' +
+          'color:#fff;border:0;border-radius:8px;font:600 13px system-ui;' +
+          'cursor:pointer">Save</button>' +
+          '<button id="tt-pe-cancel" style="padding:10px 16px;background:transparent;' +
+          'color:#8b949e;border:1px solid #30363d;border-radius:8px;' +
+          'font:600 13px system-ui;cursor:pointer">Cancel</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('#tt-pe-cancel').onclick = () => overlay.remove();
+    overlay.querySelector('#tt-pe-save').onclick = async () => {
+      const displayName = overlay.querySelector('#tt-pe-name').value.trim();
+      const phone       = overlay.querySelector('#tt-pe-phone').value.trim();
+      const bio         = overlay.querySelector('#tt-pe-bio').value.trim();
+      try {
+        if (global.Auth && global.Auth.updateProfile) {
+          await global.Auth.updateProfile({ displayName, phone, bio });
+        }
+        Toast('✅ Profile updated');
+        overlay.remove();
+        refreshAccountModal();
+      } catch (e) { Toast('❌ ' + e.message); }
+    };
+  }
+
+  /* ── Chrome Bar ────────────────────────────────────── */
+  let chromeBar = null;
+  let acctBtn = null;
+
+  function buildChrome() {
+    if (chromeBar) return chromeBar;
+
+    chromeBar = document.createElement('div');
+    chromeBar.id = 'tt-chrome';
+    Object.assign(chromeBar.style, {
+      position:'fixed', top:0, left:0, right:0, height:'48px',
+      background:'rgba(13,17,23,.94)', backdropFilter:'blur(10px)',
+      borderBottom:'1px solid #262a31', zIndex: 99996,
+      display:'flex', alignItems:'center', padding:'0 12px', gap:'6px',
+      font:'500 12px system-ui', color:'#adbac7',
+      transition:'transform .2s ease, opacity .2s ease'
+    });
+
+    chromeBar.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;' +
+      'font-weight:700;color:#e6edf3;margin-right:8px">' +
+        '<span style="font-size:16px">🛠️</span>' +
+        '<span>Modatorial</span>' +
+        '<span style="font-size:10px;color:#6e7681;font-weight:400">v' +
+        VERSION + '</span>' +
+      '</div>';
+
+    const btn = (label, icon, onClick, title, variant) => {
       const b = document.createElement('button');
-      b.textContent = label;
-      b.title = title || '';
-      b.style.cssText =
-        'background:rgba(255,255,255,0.06);color:#e8eaf0;border:1px solid rgba(255,255,255,0.1);' +
-        'border-radius:6px;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;';
-      b.addEventListener('click', onClick);
+      const iconHtml = icon ? '<span style="font-size:14px">' + icon + '</span>' : '';
+      const labelHtml = label
+        ? '<span style="margin-left:' + (icon ? '6px' : '0') + '">' + label + '</span>'
+        : '';
+      b.innerHTML = iconHtml + labelHtml;
+      b.title = title || label || icon || '';
+
+      const base = {
+        background:'transparent', color:'#adbac7', border:'1px solid transparent',
+        padding:'6px 11px', borderRadius:'6px', cursor:'pointer',
+        font:'600 12px system-ui', display:'flex', alignItems:'center',
+        transition:'background .15s, color .15s'
+      };
+      const primary = Object.assign({}, base, {
+        background:'#238636', color:'#fff', border:'1px solid #2ea043'
+      });
+      Object.assign(b.style, variant === 'primary' ? primary : base);
+
+      if (variant === 'primary') {
+        b.onmouseenter = () => { b.style.background = '#2ea043'; };
+        b.onmouseleave = () => { b.style.background = '#238636'; };
+      } else {
+        b.onmouseenter = () => { b.style.background = '#1c1f24'; b.style.color = '#e6edf3'; };
+        b.onmouseleave = () => { b.style.background = 'transparent'; b.style.color = '#adbac7'; };
+      }
+      b.onclick = onClick;
       return b;
     };
 
-    const slower  = mkBtn('◀◀', 'Slower', () => setSpeed(playbackSpeed / 2));
-    const label   = document.createElement('div');
-    label.textContent = '1.0×';
-    label.style.cssText = 'min-width:60px;text-align:center;font-weight:700;';
-    const faster  = mkBtn('▶▶', 'Faster', () => setSpeed(playbackSpeed * 2));
-    const snap    = mkBtn('📸', 'Screenshot', takeScreenshot);
-    const closeB  = mkBtn('✕', 'Close bar', () => { bar.style.display = 'none'; });
+    const collapseBtn = btn('', '☰', () => Sidebar.toggle(), 'Toggle sidebar');
+    collapseBtn.style.border = '1px solid #30363d';
+    collapseBtn.style.padding = '5px 10px';
+    chromeBar.appendChild(collapseBtn);
 
-    bar.append(slower, label, faster, snap, closeB);
+    chromeBar.appendChild(btn('Store', '📦',
+      () => global.ModStore && global.ModStore.open && global.ModStore.open(),
+      'Browse mods (F8)'));
+    chromeBar.appendChild(btn('Mods', '🔧',
+      () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10' })),
+      'Manage mods (F10)'));
 
-    function setSpeed(s) {
-      playbackSpeed = Math.max(0.25, Math.min(16, s));
-      label.textContent = playbackSpeed.toFixed(playbackSpeed < 1 ? 2 : 1) + '×';
-    }
+    const spacer = document.createElement('div');
+    spacer.style.flex = '1';
+    chromeBar.appendChild(spacer);
 
-    document.body.appendChild(bar);
-    theaterBar = bar;
-    return bar;
-  }
+    chromeBar.appendChild(btn('', '🎨', () => Theme.cycle(), 'Cycle theme (F9)'));
+    chromeBar.appendChild(btn('', '📸', Screenshot, 'Screenshot (F2)'));
 
-  function takeScreenshot() {
-    const c = API.getGameCanvas();
-    if (!c) return;
-    c.toBlob(blob => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const TT = API.getGame();
-      const name = (TT && TT.ah && TT.ah.a0j && TT.ah.a0j[TT.aE.fJ]) || 'player';
-      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-      a.download = `Modatorial_${stamp}_${name}.png`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      API.showToast('📸 Screenshot saved');
-    });
-  }
+    const srBtn = btn('Run', '⏱️', () => {
+      if (Speedrun.running) Speedrun.stop(); else Speedrun.start();
+      const lbl = srBtn.querySelector('span:last-child');
+      if (lbl) lbl.textContent = Speedrun.running ? 'Stop' : 'Run';
+    }, 'Toggle speedrun timer');
+    chromeBar.appendChild(srBtn);
 
-  function watchReplay() {
-    if (theaterRAF) cancelAnimationFrame(theaterRAF);
-    let wasReplay = false;
-    const loop = () => {
-      const TT = API.getGame();
-      const isReplay = !!(TT && TT.aE && TT.aE.hi);
-      if (isReplay && !wasReplay) {
-        buildTheaterBar().style.display = 'flex';
-      } else if (!isReplay && wasReplay) {
-        if (theaterBar) theaterBar.style.display = 'none';
+    const achBtn = btn(Achievements.count() + '/' + Achievements.total(), '🏆',
+      () => openAccountModal(), 'Achievements');
+    chromeBar.appendChild(achBtn);
+    setInterval(() => {
+      const lbl = achBtn.querySelector('span:last-child');
+      if (lbl) lbl.textContent = Achievements.count() + '/' + Achievements.total();
+    }, 2000);
+
+    const audioBtn = btn('', Audio_.muted ? '🔇' : '🔊', () => {
+      const muted = Audio_.toggleMute();
+      const i = audioBtn.querySelector('span');
+      if (i) i.textContent = muted ? '🔇' : '🔊';
+    }, 'Toggle audio');
+    chromeBar.appendChild(audioBtn);
+
+    chromeBar.appendChild(btn('', '💬',
+      () => window.open('https://discord.gg/5y8bE2hYSY', '_blank', 'noopener'),
+      'Join the Discord community'));
+
+    /* ── ACCOUNT BUTTON — redirects to login.html / signup.html ── */
+    acctBtn = btn('Sign in', '👤', () => {
+      const u = Accounts.current();
+      if (u) {
+        openAccountModal();
+      } else {
+        location.href = 'login.html?next=' + encodeURIComponent(location.pathname);
       }
-      wasReplay = isReplay;
-      theaterRAF = requestAnimationFrame(loop);
+    }, 'Click to sign in or manage accounts', 'primary');
+    chromeBar.appendChild(acctBtn);
+
+    chromeBar.appendChild(btn('', '✕', () => {
+      if (!confirm('Hide the top bar? Press Ctrl+Shift+B to bring it back.')) return;
+      chromeBar.style.transform = 'translateY(-100%)';
+      chromeBar.style.opacity = '0';
+      setTimeout(() => { chromeBar.style.display = 'none'; }, 200);
+      store.set(KEYS.chromeHidden, '1');
+    }, 'Hide chrome bar'));
+
+    document.body.appendChild(chromeBar);
+
+    const refreshAccountBtn = () => {
+      if (!acctBtn) return;
+      const u = Accounts.current();
+      const icon = acctBtn.querySelector('span:first-child');
+      const lbl  = acctBtn.querySelector('span:last-child');
+      if (u) {
+        const name = u.displayName || u.username ||
+                     (u.email ? u.email.split('@')[0] : 'Account');
+        const short = name.length > 14 ? name.slice(0, 12) + '…' : name;
+        if (icon) icon.textContent = '👤';
+        if (lbl)  lbl.textContent = short;
+        Object.assign(acctBtn.style, {
+          background:'#1a2a1a', color:'#3fb950', borderColor:'#3fb950'
+        });
+        acctBtn.title = 'Signed in as ' + name + ' · ' + (u.email || '');
+      } else {
+        if (icon) icon.textContent = '👤';
+        if (lbl)  lbl.textContent = 'Sign in';
+        Object.assign(acctBtn.style, {
+          background:'#238636', color:'#fff', borderColor:'#2ea043'
+        });
+        acctBtn.title = 'Sign in or create an account';
+      }
     };
-    loop();
-  }
+    refreshAccountBtn();
 
-  /* ============================================================
-   * 3. ACHIEVEMENTS & BADGES
-   * ============================================================ */
-  const ACH_KEY = 'tt-achievements';
-  const ACHIEVEMENTS = [
-    { id: 'first_blood',    icon: '🩸', name: 'First Blood',     desc: 'Win your first game' },
-    { id: 'blitz',          icon: '⚡', name: 'Blitz',           desc: 'Win a game in under 5 minutes' },
-    { id: 'world_conq',     icon: '🌍', name: 'World Conqueror', desc: 'Capture 100% of the map' },
-    { id: 'mod_enthusiast', icon: '🎭', name: 'Mod Enthusiast',  desc: 'Play with 10+ mods enabled' },
-    { id: 'dedicated',      icon: '🕐', name: 'Dedicated',       desc: '100 hours of playtime' },
-    { id: 'designer',       icon: '🎨', name: 'Designer',        desc: 'Import 5 custom .ttmod files' },
-    { id: 'surrender_king', icon: '🏳️', name: 'Surrender King',  desc: 'Surrender 10 times' },
-    { id: 'marathon',       icon: '🏃', name: 'Marathon',        desc: 'Play a match longer than 1 hour' },
-    { id: 'veteran',        icon: '🎖️', name: 'Veteran',         desc: 'Play 100 matches' },
-    { id: 'gladiator',      icon: '⚔️', name: 'Gladiator',       desc: 'Win 50 matches' }
-  ];
-
-  function readAchievements() {
-    try { return JSON.parse(localStorage.getItem(ACH_KEY) || '{}'); }
-    catch { return {}; }
-  }
-  function saveAchievements(a) {
-    localStorage.setItem(ACH_KEY, JSON.stringify(a));
-  }
-  function unlock(id) {
-    const a = readAchievements();
-    if (a[id]) return;
-    a[id] = Date.now();
-    saveAchievements(a);
-    const def = ACHIEVEMENTS.find(x => x.id === id);
-    if (def) {
-      API.showToast(`🏆 Achievement: ${def.icon} ${def.name}`, 4000);
-      log('Achievement unlocked:', def.name);
-    }
-  }
-
-  function checkAchievements() {
-    const raw = localStorage.getItem('tt-account-v1');
-    if (!raw) return;
-    let state;
-    try { state = JSON.parse(raw); } catch { return; }
-
-    if (state.wins >= 1)                     unlock('first_blood');
-    if (state.wins >= 50)                    unlock('gladiator');
-    if (state.gamesPlayed >= 100)            unlock('veteran');
-    if (state.surrenders >= 10)              unlock('surrender_king');
-    if (state.playtimeMs >= 100 * 3600 * 1000) unlock('dedicated');
-
-    const last = state.history && state.history[0];
-    if (last && last.outcome === 'win' && last.durationMs < 5 * 60 * 1000) {
-      unlock('blitz');
-    }
-    if (last && last.durationMs > 3600 * 1000) unlock('marathon');
-
-    if (API.mods) {
-      const loaded = [...API.mods.values()].filter(m => m.status === 'loaded').length;
-      if (loaded >= 10) unlock('mod_enthusiast');
-    }
-
-    try {
-      const imported = JSON.parse(localStorage.getItem('tt-imported-mods') || '[]');
-      if (imported.length >= 5) unlock('designer');
-    } catch {}
-  }
-
-  let conquestChecked = false;
-  API.addHook('postUpdate', () => {
-    const TT = API.getGame();
-    if (!TT || !TT.aE || TT.aE.a2G !== 1) return;
-    if (conquestChecked) return;
-    if (!TT.ah || !TT.aE) return;
-    const me = TT.aE.fJ;
-    if (TT.ah.nU[me] === 0) return;
-    if (TT.aE.ke > 0 && TT.ah.hN[me] >= TT.aE.ke * 0.98) {
-      unlock('world_conq');
-      conquestChecked = true;
-    }
-  });
-
-  API.on('modLoaded', () => setTimeout(checkAchievements, 500));
-
-  /* ============================================================
-   * 4. CUSTOM SOUND PACKS
-   * ============================================================ */
-  const Sounds = {
-    packs: {},
-    current: 'default',
-    sounds: {},
-    register(name, url) {
-      if (!Sounds.sounds[name]) Sounds.sounds[name] = {};
-      Sounds.sounds[name].url = url;
-    },
-    play(name) {
-      const pack = Sounds.packs[Sounds.current];
-      if (pack && pack.sounds && pack.sounds[name]) {
-        playUrl(pack.sounds[name]);
-        return;
-      }
-      if (Sounds.sounds[name] && Sounds.sounds[name].url) {
-        playUrl(Sounds.sounds[name].url);
-      }
-    },
-    loadPack(pack) {
-      Sounds.packs[pack.name] = pack;
-    }
-  };
-  function playUrl(url) {
-    try {
-      const a = new Audio(url);
-      a.volume = 0.4;
-      a.play().catch(() => {});
-    } catch {}
-  }
-  window.TerritorialSoundsPacks = Sounds;
-
-  /* ============================================================
-   * 5. LIVE STATS OVERLAY
-   * ============================================================ */
-  const OVERLAY_KEY = 'tt-overlay';
-  let overlayEnabled = localStorage.getItem(OVERLAY_KEY) !== '0';
-  let matchStartTime = 0;
-
-  function getMyRank(TT) {
-    if (!TT.ah) return null;
-    const me = TT.aE.fJ;
-    const myT = TT.ah.hN[me];
-    let rank = 1;
-    for (let i = 0; i < TT.aE.fW; i++) {
-      if (TT.ah.nU[i] === 0) continue;
-      if (TT.ah.hN[i] > myT) rank++;
-    }
-    return rank;
-  }
-  function formatMs(ms) {
-    const s = Math.floor(ms / 1000);
-    const m = Math.floor(s / 60);
-    return `${m}:${(s % 60).toString().padStart(2, '0')}`;
-  }
-  function drawOverlay() {
-    if (!overlayEnabled) return;
-    const TT = API.getGame();
-    if (!TT || !TT.aE || TT.aE.a2G !== 1 || TT.aE.hx) return;
-    if (!TT.ah) return;
-    const c = API.getGameCanvas();
-    if (!c) return;
-    const g = c.getContext('2d');
-    const W = c.width;
-
-    g.save();
-    g.font = 'bold 12px system-ui';
-    g.textBaseline = 'top';
-    g.textAlign = 'left';
-
-    const line1 = `⚔ Rank: ${getMyRank(TT) || '?'} · Strength: ${TT.ah.hb[TT.aE.fJ] || 0}`;
-    const line2 = `⏱ ${formatMs(performance.now() - (matchStartTime || performance.now()))}`;
-    const lines = [line1, line2];
-    const padding = 10;
-    const lh = 16;
-    const boxH = lines.length * lh + padding * 2;
-    const boxW = 250;
-
-    g.fillStyle = 'rgba(0,0,0,0.55)';
-    g.fillRect(W - boxW - 10, 40, boxW, boxH);
-    g.fillStyle = '#cff';
-    lines.forEach((l, i) => g.fillText(l, W - boxW, 40 + padding + i * lh));
-    g.restore();
-  }
-
-  API.addHook('postUpdate', () => {
-    const TT = API.getGame();
-    if (!TT || !TT.aE) return;
-    if (TT.aE.a2G === 1 && !matchStartTime) matchStartTime = performance.now();
-    if (TT.aE.a2G === 0) matchStartTime = 0;
-    drawOverlay();
-  });
-
-  window.TerritorialOverlay = {
-    toggle() {
-      overlayEnabled = !overlayEnabled;
-      localStorage.setItem(OVERLAY_KEY, overlayEnabled ? '1' : '0');
-      API.showToast(`📊 Overlay ${overlayEnabled ? 'on' : 'off'}`);
-    }
-  };
-
-  /* ============================================================
-   * 6. SHARE SETUP VIA URL
-   * ============================================================ */
-  function encodeSetup() {
-    let disabled = [];
-    try { disabled = JSON.parse(localStorage.getItem('tt-disabled-mods') || '[]'); } catch {}
-    const setup = {
-      d: disabled,
-      t: localStorage.getItem('tt-theme') || 'midnight',
-      l: localStorage.getItem('tt-layout') || 'sidebar',
-      u: (document.getElementById('input0') || {}).value || '',
-      s: localStorage.getItem('tt-sidebar-collapsed') || '0'
-    };
-    return btoa(encodeURIComponent(JSON.stringify(setup)))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-  function decodeSetup(b64) {
-    try {
-      const padded = b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice(0, (4 - b64.length % 4) % 4);
-      return JSON.parse(decodeURIComponent(atob(padded)));
-    } catch { return null; }
-  }
-  function applySetupFromUrl() {
-    const hash = location.hash.slice(1);
-    if (!hash.startsWith('setup=')) return;
-    const setup = decodeSetup(hash.slice(6));
-    if (!setup) return;
-    if (setup.d) localStorage.setItem('tt-disabled-mods', JSON.stringify(setup.d));
-    if (setup.t) localStorage.setItem('tt-theme', setup.t);
-    if (setup.l) localStorage.setItem('tt-layout', setup.l);
-    if (setup.s) localStorage.setItem('tt-sidebar-collapsed', setup.s);
-    if (setup.u && document.getElementById('input0')) {
-      document.getElementById('input0').value = setup.u;
-    }
-    history.replaceState(null, '', location.pathname);
-    API.showToast('🔗 Setup loaded from URL');
-  }
-
-  window.TerritorialShare = {
-    generate() {
-      const code = encodeSetup();
-      const url = location.origin + location.pathname + '#setup=' + code;
-      navigator.clipboard.writeText(url).then(
-        () => API.showToast('🔗 Setup URL copied to clipboard'),
-        () => prompt('Copy this URL:', url)
-      );
-    }
-  };
-
-  /* ============================================================
-   * 7. DISCORD RICH PRESENCE (stub)
-   * ============================================================ */
-  window.TerritorialDiscord = {
-    set(details, state) {
-      try {
-        fetch('http://localhost:6463/rpc', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ details, state, ts: Date.now() })
-        }).catch(() => {});
-      } catch {}
-    }
-  };
-
-  API.on('screenChanged', screen => {
-    if (screen === 'menu') window.TerritorialDiscord.set('In menu', 'Browsing mods');
-    else                   window.TerritorialDiscord.set('In a match', 'Playing Territorial.io');
-  });
-
-  /* ============================================================
-   * 8. ANNOUNCER VOICE PACKS
-   * ============================================================ */
-  const Announcer = {
-    enabled: localStorage.getItem('tt-announcer') === '1',
-    pack: null,
-    setPack(pack) { Announcer.pack = pack; },
-    say(clipId) {
-      if (!Announcer.enabled || !Announcer.pack) return;
-      const url = Announcer.pack.clips && Announcer.pack.clips[clipId];
-      if (url) playUrl(url);
-    }
-  };
-  window.TerritorialAnnouncer = Announcer;
-
-  API.on('screenChanged', s => {
-    if (s === 'menu') Announcer.say('menu');
-  });
-
-  /* ============================================================
-   * 9. SPEEDRUN MODE
-   * ============================================================ */
-  const SR_KEY = 'tt-speedrun-pb';
-  let srActive = false;
-  let srStart  = 0;
-
-  function srStartRun() {
-    srActive = true;
-    srStart = performance.now();
-  }
-  function srFinish() {
-    if (!srActive) return;
-    const total = performance.now() - srStart;
-    const pbRaw = localStorage.getItem(SR_KEY);
-    const pb = pbRaw ? parseFloat(pbRaw) : Infinity;
-    if (!isFinite(pb) || total < pb) {
-      localStorage.setItem(SR_KEY, String(total));
-      API.showToast(`🏆 New PB: ${formatMs(total)}`, 5000);
-    } else {
-      API.showToast(`⏱ Finished: ${formatMs(total)} (PB: ${formatMs(pb)})`, 4000);
-    }
-    srActive = false;
-  }
-  function srDraw() {
-    if (!srActive) return;
-    const c = API.getGameCanvas();
-    if (!c) return;
-    const g = c.getContext('2d');
-    const elapsed = performance.now() - srStart;
-    const pbRaw = localStorage.getItem(SR_KEY);
-    const pb = pbRaw ? parseFloat(pbRaw) : 0;
-    g.save();
-    g.font = 'bold 18px ui-monospace, monospace';
-    g.textBaseline = 'top';
-    g.fillStyle = (pb && elapsed > pb) ? '#f85149' : '#3fb950';
-    g.fillText(formatMs(elapsed), 20, 50);
-    if (pb) {
-      g.font = 'bold 12px ui-monospace, monospace';
-      g.fillStyle = elapsed > pb ? '#f85149' : '#3fb950';
-      const delta = elapsed - pb;
-      g.fillText(`${delta >= 0 ? '+' : ''}${(delta / 1000).toFixed(1)}s vs PB`, 20, 72);
-    }
-    g.restore();
-  }
-  API.addHook('postUpdate', () => {
-    const TT = API.getGame();
-    if (!TT || !TT.aE) return;
-    if (TT.aE.a2G === 1 && !srActive) srStartRun();
-    if (TT.aE.a2G === 0 && srActive) srFinish();
-    srDraw();
-  });
-
-  /* ============================================================
-   * 10. MISC
-   * ============================================================ */
-  document.addEventListener('keydown', e => {
-    if (e.key === 'F2') {
-      e.preventDefault();
-      takeScreenshot();
-    }
-  });
-
-  /* Birthday mode */
-  try {
-    const bd = localStorage.getItem('tt-birthday');
-    if (bd) {
-      const now = new Date();
-      const today = (now.getMonth() + 1).toString().padStart(2, '0') + '-' +
-                    now.getDate().toString().padStart(2, '0');
-      if (bd === today) {
-        setTimeout(() => API.showToast('🎂 Happy birthday! +500 XP bonus'), 3000);
-        const raw = localStorage.getItem('tt-account-v1');
-        if (raw) {
-          try {
-            const s = JSON.parse(raw);
-            s.xp = (s.xp || 0) + 500;
-            localStorage.setItem('tt-account-v1', JSON.stringify(s));
-          } catch {}
+    if (global.Auth && global.Auth.onChange) {
+      global.Auth.onChange(u => {
+        if (u) {
+          Accounts.remember(u);
+          Achievements.unlock('first-launch');
         }
-      }
+        refreshAccountBtn();
+      });
     }
-  } catch {}
+    Accounts.onChange(refreshAccountBtn);
 
-  /* ============================================================
-   * INJECT FEATURE BUTTONS
-   * ============================================================ */
-  function injectFeatureButtons() {
-    const chrome = document.getElementById('tt-chrome');
-    if (!chrome) return;
-
-    injectProfilesButton();
-
-    if (!chrome.querySelector('[data-tt-feature="share"]')) {
-      const shareBtn = document.createElement('button');
-      shareBtn.dataset.ttOur = '1';
-      shareBtn.dataset.ttFeature = 'share';
-      shareBtn.textContent = '🔗';
-      shareBtn.title = 'Copy shareable setup URL';
-      shareBtn.style.cssText =
-        'background:rgba(255,255,255,0.06);color:#e8eaf0;border:1px solid rgba(255,255,255,0.1);' +
-        'border-radius:6px;padding:3px 10px;font-family:inherit;font-size:12px;cursor:pointer;';
-      shareBtn.addEventListener('click', () => window.TerritorialShare.generate());
-      const hideBtn = chrome.querySelector('button[title="Hide chrome"]');
-      if (hideBtn) chrome.insertBefore(shareBtn, hideBtn);
-      else chrome.appendChild(shareBtn);
+    if (store.get(KEYS.chromeHidden, false) === '1') {
+      chromeBar.style.display = 'none';
     }
 
-    if (!chrome.querySelector('[data-tt-feature="overlay"]')) {
-      const ovBtn = document.createElement('button');
-      ovBtn.dataset.ttOur = '1';
-      ovBtn.dataset.ttFeature = 'overlay';
-      ovBtn.textContent = '📊';
-      ovBtn.title = 'Toggle live stats overlay';
-      ovBtn.style.cssText =
-        'background:rgba(255,255,255,0.06);color:#e8eaf0;border:1px solid rgba(255,255,255,0.1);' +
-        'border-radius:6px;padding:3px 10px;font-family:inherit;font-size:12px;cursor:pointer;';
-      ovBtn.addEventListener('click', () => window.TerritorialOverlay.toggle());
-      const hideBtn = chrome.querySelector('button[title="Hide chrome"]');
-      if (hideBtn) chrome.insertBefore(ovBtn, hideBtn);
-      else chrome.appendChild(ovBtn);
-    }
+    return chromeBar;
   }
 
-  /* ============================================================
-   * BOOT
-   * ============================================================ */
+  /* ── Sidebar ───────────────────────────────────────── */
+  const Sidebar = {
+    collapsed: store.get(KEYS.sidebarCollapsed, false) === true,
+    apply() {
+      document.body.classList.toggle('tt-sidebar-collapsed', this.collapsed);
+      try {
+        document.documentElement.style.setProperty(
+          '--tt-sidebar-width', this.collapsed ? '56px' : '220px');
+      } catch {}
+    },
+    toggle() {
+      this.collapsed = !this.collapsed;
+      store.set(KEYS.sidebarCollapsed, this.collapsed);
+      this.apply();
+    },
+    collapse() { this.collapsed = true; store.set(KEYS.sidebarCollapsed, true); this.apply(); },
+    expand()   { this.collapsed = false; store.set(KEYS.sidebarCollapsed, false); this.apply(); }
+  };
+
+  /* ── Hotkeys ───────────────────────────────────────── */
+  window.addEventListener('keydown', e => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' ||
+        (e.target && e.target.isContentEditable)) return;
+
+    if (e.ctrlKey && e.shiftKey && (e.key === 'B' || e.key === 'b')) {
+      e.preventDefault();
+      store.del(KEYS.chromeHidden);
+      if (chromeBar) {
+        chromeBar.style.display = 'flex';
+        chromeBar.style.transform = '';
+        chromeBar.style.opacity = '1';
+        Toast('✓ Chrome bar restored');
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'F2': e.preventDefault(); Screenshot(); break;
+      case 'F9': e.preventDefault(); Theme.cycle(); break;
+    }
+  });
+
+  /* ── Public API ────────────────────────────────────── */
+  global.ClientFeatures = {
+    VERSION: VERSION,
+    Theme, Audio: Audio_, Achievements, Speedrun, Screenshot,
+    Stats, Accounts, Sidebar, Toast,
+    openAccount: openAccountModal,
+    openProfileEditor
+  };
+
+  /* ── Boot ──────────────────────────────────────────── */
   function boot() {
-    log('client-features.js v2.0 loaded');
-    applySetupFromUrl();
-    setInterval(injectFeatureButtons, 500);
-    watchReplay();
-    setInterval(checkAchievements, 5000);
-    checkAchievements();
-    API.on('ready', () => {
-      window.TerritorialDiscord.set('In menu', 'Browsing mods');
-    });
+    log('client-features.js v' + VERSION + ' loaded');
+    try { Theme.apply(Theme.current); } catch (e) { err('theme:', e); }
+    try { Sidebar.apply(); } catch (e) { err('sidebar:', e); }
+    try { buildChrome(); } catch (e) { err('chrome:', e); }
     log('All features active');
+
+    if (!store.get(KEYS.seenIntro, false)) {
+      setTimeout(() => {
+        Achievements.unlock('first-launch');
+        store.set(KEYS.seenIntro, true);
+      }, 1500);
+    }
+
+    setInterval(() => {
+      try {
+        const list = JSON.parse(localStorage.getItem('tt-imported-mods') || '[]');
+        if (Array.isArray(list)) {
+          if (list.length >= 3)  Achievements.unlock('mod-enthusiast');
+          if (list.length >= 10) Achievements.unlock('mod-addict');
+        }
+      } catch {}
+    }, 5000);
   }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
-  } else boot();
+  } else {
+    boot();
+  }
+
+  log('Public API exposed at window.ClientFeatures');
 
 })(window);

@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create account · Modatorial.io</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: #0a0c10; color: #e6edf3;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    width: 100%; max-width: 440px; padding: 32px;
+    background: #16181d; border: 1px solid #262a31; border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 6px; font-weight: 700; font-size: 18px;
+  }
+  .brand .icon { font-size: 22px; }
+  h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
+  .sub { margin: 0 0 24px; color: #8b949e; font-size: 13px; }
+  label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: #adbac7; margin: 14px 0 6px;
+  }
+  input[type="email"], input[type="password"], input[type="text"] {
+    width: 100%; padding: 11px 13px;
+    border: 1px solid #30363d; border-radius: 8px;
+    background: #0d1117; color: #e6edf3;
+    font: 400 14px system-ui;
+    transition: border-color .15s;
+  }
+  input:focus { outline: none; border-color: #3fb950; }
+  .hint { font-size: 11px; color: #6e7681; margin-top: 4px; }
+  .hint.ok { color: #3fb950; }
+  .hint.bad { color: #f85149; }
+  .pw-wrap { position: relative; }
+  .pw-toggle {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: transparent; border: 0; color: #8b949e;
+    font-size: 16px; cursor: pointer; padding: 4px 8px;
+  }
+  .pw-toggle:hover { color: #e6edf3; }
+  .meter {
+    height: 4px; border-radius: 2px; margin-top: 6px;
+    background: #262a31; overflow: hidden;
+  }
+  .meter > div {
+    height: 100%; width: 0%;
+    transition: width .2s, background .2s;
+  }
+  .msg {
+    margin-top: 16px; padding: 10px 14px; border-radius: 8px;
+    font-size: 13px; display: none;
+  }
+  .msg.error { display: block; background: #2d1414; color: #f85149;
+               border: 1px solid #7a1f1f; }
+  .msg.success { display: block; background: #0d2a14; color: #3fb950;
+                 border: 1px solid #1a5424; }
+  button.submit {
+    width: 100%; padding: 12px; margin-top: 20px;
+    background: #238636; color: #fff; border: 0; border-radius: 8px;
+    font: 600 14px system-ui; cursor: pointer;
+    transition: background .15s;
+  }
+  button.submit:hover:not(:disabled) { background: #2ea043; }
+  button.submit:disabled { background: #1a3a22; cursor: default; opacity: .7; }
+  .tos {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin-top: 16px; font-size: 12px; color: #8b949e;
+  }
+  .tos input { margin-top: 3px; }
+  .footer {
+    text-align: center; margin-top: 20px;
+    font-size: 12px; color: #8b949e;
+  }
+  .footer a { color: #3fb950; text-decoration: none; font-weight: 600; }
+  .footer a:hover { text-decoration: underline; }
+  .config-warn {
+    margin-bottom: 20px; padding: 12px;
+    background: #2a1a0a; color: #f0883e;
+    border: 1px solid #f0883e; border-radius: 8px;
+    font-size: 12px; line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><span class="icon">🛠️</span><span>Modatorial.io</span></div>
+    <h1>Create your account</h1>
+    <p class="sub">Publish mods, get verified as a real author, save your progress.</p>
+
+    <div id="configWarn" class="config-warn" style="display:none"></div>
+
+    <form id="signupForm" autocomplete="on">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="email"
+             placeholder="you@example.com" required>
+
+      <label for="username">Username</label>
+      <input id="username" type="text" autocomplete="username"
+             placeholder="letters, numbers, _ - . (3–24 chars)" required>
+      <div class="hint" id="usernameHint">
+        3–24 chars · a–z · 0–9 · _ - .
+      </div>
+
+      <label for="displayName">Display name <span style="font-weight:400;color:#6e7681">(optional)</span></label>
+      <input id="displayName" type="text" autocomplete="name"
+             placeholder="Shown on your mods">
+
+      <label for="password">Password</label>
+      <div class="pw-wrap">
+        <input id="password" type="password" autocomplete="new-password"
+               placeholder="At least 8 characters" required>
+        <button type="button" class="pw-toggle" id="pwToggle">👁</button>
+      </div>
+      <div class="meter"><div id="pwMeter"></div></div>
+      <div class="hint" id="pwHint">Use 8+ characters.</div>
+
+      <label for="password2">Confirm password</label>
+      <input id="password2" type="password" autocomplete="new-password"
+             placeholder="Repeat your password" required>
+
+      <div class="tos">
+        <input type="checkbox" id="tos" required>
+        <label for="tos" style="margin:0;font-weight:400;font-size:12px;color:#8b949e">
+          I agree to follow the community rules and won't impersonate other users.
+        </label>
+      </div>
+
+      <button type="submit" class="submit" id="submitBtn">Create account</button>
+    </form>
+
+    <div id="msg" class="msg"></div>
+
+    <div class="footer">
+      Already have an account?
+      <a href="login.html">Sign in</a>
+    </div>
+    <div class="footer" style="margin-top:10px">
+      <a href="game.html" style="color:#8b949e">← Back to game</a>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <!-- Your config -->
+  <script src="firebase-config.js"></script>
+
+  <script>
+  (function () {
+    'use strict';
+
+    const $ = id => document.getElementById(id);
+    const msgEl  = $('msg');
+    const warnEl = $('configWarn');
+    const submit = $('submitBtn');
+
+    function showError(text) {
+      msgEl.className = 'msg error';
+      msgEl.textContent = text;
+    }
+    function showSuccess(text) {
+      msgEl.className = 'msg success';
+      msgEl.textContent = text;
+    }
+    function showWarn(html) {
+      warnEl.style.display = 'block';
+      warnEl.innerHTML = html;
+    }
+    function clearMsg() { msgEl.className = 'msg'; msgEl.textContent = ''; }
+
+    // ── 1. SDK check ─────────────────────────────────
+    if (typeof firebase === 'undefined') {
+      showWarn('❌ Firebase SDK failed to load.');
+      submit.disabled = true;
+      return;
+    }
+
+    // ── 2. Config check ──────────────────────────────
+    const cfg = window.MODATORIAL_FIREBASE;
+    if (!cfg || !cfg.apiKey || String(cfg.apiKey).indexOf('YOUR_') === 0) {
+      showWarn(
+        '❌ <strong>firebase-config.js is missing or has placeholders.</strong><br>' +
+        'Open <code>firebase-config.js</code> and paste your real values from ' +
+        '<em>Firebase Console → Project Settings → Your apps</em>.'
+      );
+      submit.disabled = true;
+      return;
+    }
+
+    // ── 3. Init Firebase ─────────────────────────────
+    let auth, db;
+    try {
+      if (!firebase.apps || !firebase.apps.length) {
+        firebase.initializeApp(cfg);
+        console.log('[Signup] Firebase initialized');
+      }
+      auth = firebase.auth();
+      db   = firebase.firestore();
+    } catch (e) {
+      showWarn('❌ Firebase failed to initialize: ' + e.message);
+      submit.disabled = true;
+      return;
+    }
+
+    // ── 4. Redirect if already signed in ─────────────
+    const next = new URLSearchParams(location.search).get('next') || 'game.html';
+    auth.onAuthStateChanged(user => {
+      if (user) location.replace(next);
+    });
+
+    // ── 5. Username validation ───────────────────────
+    const USERNAME_RE = /^[a-zA-Z0-9_\-\.]{3,24}$/;
+    const usernameInput = $('username');
+    const usernameHint  = $('usernameHint');
+
+    let usernameCheckTimer = null;
+    let usernameStatus = 'idle'; // 'ok' | 'bad' | 'taken' | 'idle'
+
+    usernameInput.addEventListener('input', () => {
+      const v = usernameInput.value.trim();
+      clearTimeout(usernameCheckTimer);
+      if (!v) {
+        usernameHint.textContent = '3–24 chars · a–z · 0–9 · _ - .';
+        usernameHint.className = 'hint';
+        usernameStatus = 'idle';
+        return;
+      }
+      if (!USERNAME_RE.test(v)) {
+        usernameHint.textContent = 'Must be 3–24 chars: letters, numbers, _ - .';
+        usernameHint.className = 'hint bad';
+        usernameStatus = 'bad';
+        return;
+      }
+      usernameHint.textContent = 'Checking availability…';
+      usernameHint.className = 'hint';
+      usernameStatus = 'idle';
+      usernameCheckTimer = setTimeout(async () => {
+        try {
+          const snap = await db.collection('usernames').doc(v.toLowerCase()).get();
+          if (snap.exists) {
+            usernameHint.textContent = '❌ "' + v + '" is already taken.';
+            usernameHint.className = 'hint bad';
+            usernameStatus = 'taken';
+          } else {
+            usernameHint.textContent = '✅ "' + v + '" is available!';
+            usernameHint.className = 'hint ok';
+            usernameStatus = 'ok';
+          }
+        } catch (e) {
+          console.warn('[Signup] username check failed:', e);
+          usernameHint.textContent = 'Could not check availability — try submitting anyway.';
+          usernameHint.className = 'hint';
+          usernameStatus = 'ok';
+        }
+      }, 350);
+    });
+
+    // ── 6. Password strength ─────────────────────────
+    const pwInput = $('password');
+    const pwHint  = $('pwHint');
+    const pwMeter = $('pwMeter');
+
+    pwInput.addEventListener('input', () => {
+      const v = pwInput.value;
+      let score = 0;
+      if (v.length >= 8)  score++;
+      if (v.length >= 12) score++;
+      if (/[a-z]/.test(v) && /[A-Z]/.test(v)) score++;
+      if (/\d/.test(v)) score++;
+      if (/[^a-zA-Z0-9]/.test(v)) score++;
+
+      const pct = Math.min(100, (score / 5) * 100);
+      const colors = ['#f85149', '#f0883e', '#e3b341', '#3fb950', '#3fb950'];
+      pwMeter.style.width = pct + '%';
+      pwMeter.style.background = colors[Math.max(0, score - 1)] || '#262a31';
+
+      if (!v) { pwHint.textContent = 'Use 8+ characters.'; pwHint.className = 'hint'; }
+      else if (score <= 1) { pwHint.textContent = 'Weak — add more length/variety.'; pwHint.className = 'hint bad'; }
+      else if (score <= 2) { pwHint.textContent = 'Okay — could be stronger.'; pwHint.className = 'hint'; }
+      else if (score <= 3) { pwHint.textContent = 'Good password.'; pwHint.className = 'hint ok'; }
+      else { pwHint.textContent = 'Strong password.'; pwHint.className = 'hint ok'; }
+    });
+
+    // ── 7. Show/hide password ────────────────────────
+    $('pwToggle').addEventListener('click', () => {
+      const isPw = pwInput.type === 'password';
+      pwInput.type = isPw ? 'text' : 'password';
+      $('pwToggle').textContent = isPw ? '🙈' : '👁';
+    });
+
+    // ── 8. Submit ────────────────────────────────────
+    $('signupForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      clearMsg();
+
+      const email = $('email').value.trim();
+      const uname = usernameInput.value.trim();
+      const name  = $('displayName').value.trim() || uname;
+      const pw    = pwInput.value;
+      const pw2   = $('password2').value;
+      const tos   = $('tos').checked;
+
+      // Client validation
+      if (!email)          return showError('Email is required.');
+      if (!uname)          return showError('Username is required.');
+      if (!USERNAME_RE.test(uname))
+        return showError('Username must be 3–24 chars: letters, numbers, _ - .');
+      if (usernameStatus === 'taken')
+        return showError('That username is already taken.');
+      if (pw.length < 8)   return showError('Password must be at least 8 characters.');
+      if (pw !== pw2)      return showError('Passwords do not match.');
+      if (!tos)            return showError('Please accept the community rules.');
+
+      submit.disabled = true;
+      const oldLabel = submit.textContent;
+      submit.textContent = 'Creating account…';
+
+      try {
+        // Double-check username (in case someone else took it in the last minute)
+        const unameRef = db.collection('usernames').doc(uname.toLowerCase());
+        const existing = await unameRef.get();
+        if (existing.exists) {
+          throw Object.assign(new Error('Username is already taken.'), {
+            code: 'username-taken'
+          });
+        }
+
+        // Create auth user
+        const cred = await auth.createUserWithEmailAndPassword(email, pw);
+        const uid = cred.user.uid;
+
+        // Write profile + reserve username
+        const profile = {
+          uid,
+          email: email.toLowerCase(),
+          username: uname.toLowerCase(),
+          usernameDisplay: uname,
+          displayName: name,
+          photoURL: null,
+          phone: null,
+          bio: '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const batch = db.batch();
+        batch.set(db.collection('users').doc(uid), profile);
+        batch.set(unameRef, {
+          uid,
+          username: uname.toLowerCase(),
+          createdAt: profile.createdAt
+        });
+        await batch.commit();
+
+        try { await cred.user.updateProfile({ displayName: name }); } catch {}
+
+        showSuccess('✅ Account created! Redirecting…');
+        setTimeout(() => location.replace(next), 600);
+      } catch (err) {
+        console.error('[Signup]', err);
+        const code = err.code || '';
+        let friendly = err.message;
+        if (err.code === 'username-taken' || err.message.includes('already taken'))
+          friendly = 'That username was just taken. Pick another.';
+        else if (code.includes('email-already-in-use'))
+          friendly = 'That email is already registered. Try signing in instead.';
+        else if (code.includes('invalid-email'))
+          friendly = 'That email address looks invalid.';
+        else if (code.includes('weak-password'))
+          friendly = 'Password is too weak. Use 8+ characters with mixed case/numbers.';
+        else if (code.includes('operation-not-allowed'))
+          friendly = '⚠️ Email/Password sign-in is not enabled. Enable it in ' +
+                     'Firebase Console → Authentication → Sign-in method → ' +
+                     'Email/Password → Enable.';
+        else if (code.includes('permission-denied'))
+          friendly = '⚠️ Firestore rejected the write. Check your Firestore rules.';
+        else if (code.includes('network'))
+          friendly = 'Network error — check your connection.';
+        showError('❌ ' + friendly);
+        submit.disabled = false;
+        submit.textContent = oldLabel;
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

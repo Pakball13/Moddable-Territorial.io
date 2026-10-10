@@ -1,0 +1,118 @@
+<ttmod>
+{
+  "id": "cannot-touch",
+  "name": "Cannot Touch",
+  "version": "1.0.0",
+  "author": "Modatorial.io · HappyGamer",
+  "description": "You lose instantly if your territory touches a player of the forbidden color. Set the color in mod settings (gear icon).",
+  "gameVersion": 25,
+  "settings": [
+    { "id": "color",     "type": "color",  "label": "Forbidden color",    "default": "#ff4400" },
+    { "id": "colorName", "type": "text",   "label": "Color name",         "default": "orange", "placeholder": "shown in the game-over toast" },
+    { "id": "tolerance", "type": "slider", "label": "Color tolerance",    "min": 5, "max": 60, "step": 5, "default": 25 },
+    { "id": "surrender", "type": "toggle", "label": "Force surrender",    "default": true }
+  ]
+}
+</ttmod>
+<script>
+/* ============================================================
+ *  Cannot Touch  —  HappyGamer challenge mod
+ *  If the player's territory borders any player whose base
+ *  color matches the configured forbidden color, they lose.
+ * ============================================================ */
+
+let forbidden   = null;
+let colorName   = 'the forbidden color';
+let tolerance   = 25;
+let forceSurr   = true;
+let lossFired   = false;
+let checkDelay  = 0;
+
+function refreshConfig() {
+  const s = mod.settings || {};
+  const hex  = s.color     || '#ff4400';
+  colorName  = s.colorName || 'the forbidden color';
+  tolerance  = Math.max(0, Math.min(255, +s.tolerance || 25));
+  forceSurr  = s.surrender !== false;
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (m) {
+    const n = parseInt(m[1], 16);
+    forbidden = { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  } else {
+    forbidden = null;
+  }
+  api.log('Forbidden color:', hex, '(' + colorName + ') · tolerance ±' + tolerance);
+}
+
+refreshConfig();
+api.on('modSettingsChanged', (id) => { if (id === mod.id) refreshConfig(); });
+
+/* ---- colour match (with tolerance) ---- */
+function matches(r, g, b) {
+  return Math.abs(r - forbidden.r) <= tolerance
+      && Math.abs(g - forbidden.g) <= tolerance
+      && Math.abs(b - forbidden.b) <= tolerance;
+}
+
+/* ---- scan for touching ---- */
+function isTouchingForbidden() {
+  const TT = api.getGame();
+  if (!TT || !TT.aE || TT.aE.a2G !== 1) return false;
+  const ad = TT.ad, ah = TT.ah, aE = TT.aE;
+  if (!ad || !ah) return false;
+  const me = aE.fJ;
+  if (ah.nU[me] === 0) return false;
+  if (!ah.hF || !ah.hF[me]) return false;
+
+  const myBorders = ah.hF[me];
+  const fb = ad.fb;
+  const aJA = ad.aJA, aJB = ad.aJB, aJC = ad.aJC;
+  for (let i = 0; i < myBorders.length; i++) {
+    const hx = myBorders[i];
+    for (let j = 0; j < 4; j++) {
+      const nb = hx + fb[j];
+      if (!ad.h9(nb)) continue;
+      const other = ad.fR(nb);
+      if (other === me) continue;
+      if (matches(aJA[other], aJB[other], aJC[other])) return true;
+    }
+  }
+  return false;
+}
+
+/* ---- trigger loss ---- */
+function triggerLoss() {
+  if (lossFired) return;
+  lossFired = true;
+  const TT = api.getGame();
+  api.showToast('💥 GAME OVER — you touched ' + colorName + '!', 6000);
+  api.log('Loss triggered — ' + colorName);
+
+  if (!forceSurr || !TT) return;
+
+  /* Try the game's surrender flow */
+  try {
+    if (TT.b1 && TT.b1.qm && typeof TT.b1.qm.r1 === 'function') {
+      TT.b1.qm.r1(513);   /* 513 = surrender command */
+    }
+  } catch (e) {
+    api.warn('Surrender call failed:', e);
+  }
+}
+
+/* ---- per-frame check (throttled to every 10 frames) ---- */
+api.addHook('postUpdate', () => {
+  if (!forbidden) return;
+  if (lossFired) {
+    /* reset when back at menu */
+    const TT = api.getGame();
+    if (!TT || !TT.aE || TT.aE.a2G !== 1) lossFired = false;
+    return;
+  }
+  if (++checkDelay < 10) return;
+  checkDelay = 0;
+  if (isTouchingForbidden()) triggerLoss();
+});
+
+api.log('🚫 Cannot Touch active — avoid ' + colorName + '!');
+</script>
