@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Modatorial Panorama Generator</title>
+<style>
+  html, body { margin:0; height:100%; background:#0a0a12; color:#e6e8f0;
+               font-family: system-ui, sans-serif; overflow:hidden; }
+  #wrap { display:flex; height:100vh; }
+  #stage { flex:1; display:flex; align-items:center; justify-content:center;
+           background:#000; overflow:hidden; }
+  canvas { box-shadow:0 0 40px rgba(0,0,0,.9); max-width:100%; max-height:100%;
+           image-rendering:auto; }
+  #panel { width:290px; background:#15171c; padding:18px; box-sizing:border-box;
+           border-left:1px solid #2a2d34; overflow-y:auto; }
+  #panel h1 { font-size:16px; margin:0 0 16px; letter-spacing:.4px; }
+  #panel label { display:block; font-size:12px; margin:12px 0 4px; opacity:.85; }
+  #panel input[type=range] { width:100%; }
+  #panel input[type=color] { width:100%; height:32px; border:1px solid #333;
+                             border-radius:6px; background:#111; cursor:pointer; }
+  #panel input[type=number], #panel select {
+    width:100%; padding:6px 8px; background:#0f1115; color:#e6e8f0;
+    border:1px solid #333; border-radius:6px; font-family:inherit; font-size:13px;
+  }
+  #panel button { width:100%; margin-top:14px; padding:10px 14px; background:#2f7d3a;
+                  color:#fff; border:0; border-radius:8px; cursor:pointer;
+                  font-family:inherit; font-size:14px; font-weight:600;
+                  transition:background .15s; }
+  #panel button:hover { background:#3a9c48; }
+  #panel button.alt { background:#3a3f48; margin-top:8px; }
+  #panel button.alt:hover { background:#4a505a; }
+  .row { display:flex; gap:8px; }
+  .row > * { flex:1; }
+  .note { font-size:11px; opacity:.55; margin-top:16px; line-height:1.5; }
+  #status { font-size:12px; opacity:.85; margin-top:10px; min-height:18px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><canvas id="cv"></canvas></div>
+  <div id="panel">
+    <h1>🌌 Panorama Generator</h1>
+
+    <label>Width</label>
+    <input id="W" type="number" value="4096" min="1024" max="8192" step="256">
+
+    <label>Height</label>
+    <input id="H" type="number" value="1024" min="256"  max="4096" step="128">
+
+    <label>Style</label>
+    <select id="style">
+      <option value="night">Night (stars + hills)</option>
+      <option value="dusk">Dusk (purple/pink)</option>
+      <option value="aurora">Aurora (green sky)</option>
+      <option value="void">Void (dark, minimal)</option>
+    </select>
+
+    <label>Star density <span id="starVal">500</span></label>
+    <input id="stars" type="range" min="0" max="3000" value="500">
+
+    <label>Hill height <span id="hillVal">180</span></label>
+    <input id="hill" type="range" min="20" max="500" value="180">
+
+    <label>Fog amount <span id="fogVal">50</span>%</label>
+    <input id="fog" type="range" min="0" max="100" value="50">
+
+    <label>Vignette <span id="vigVal">20</span>%</label>
+    <input id="vig" type="range" min="0" max="80" value="20">
+
+    <label>Top color</label>
+    <input id="c1" type="color" value="#0a0a1a">
+
+    <label>Middle color</label>
+    <input id="c2" type="color" value="#1a1a3a">
+
+    <label>Bottom color</label>
+    <input id="c3" type="color" value="#3a1a4a">
+
+    <button id="download">⬇  Download PNG</button>
+    <button id="regenerate" class="alt">🎲  Regenerate</button>
+    <div id="status"></div>
+
+    <div class="note">
+      Save the downloaded file as:<br>
+      <code>mods/panorama-bg/assets/panorama.png</code><br><br>
+      Then reload the game — the loader will pick it up automatically.
+    </div>
+  </div>
+</div>
+
+<script>
+const cv = document.getElementById('cv');
+const g  = cv.getContext('2d');
+
+function hexToRgb(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+function mix(a, b, t) { return a + (b - a) * t; }
+
+let seed = Math.floor(Math.random() * 1e9);
+function rand() { // deterministic per-seed
+  seed = (seed * 1664525 + 1013904223) >>> 0;
+  return seed / 4294967296;
+}
+
+function render() {
+  const W = +document.getElementById('W').value;
+  const H = +document.getElementById('H').value;
+  const style = document.getElementById('style').value;
+  const starN = +document.getElementById('stars').value;
+  const hillH = +document.getElementById('hill').value;
+  const fogA  = +document.getElementById('fog').value / 100;
+  const vigA  = +document.getElementById('vig').value / 100;
+
+  let cTop = document.getElementById('c1').value;
+  let cMid = document.getElementById('c2').value;
+  let cBot = document.getElementById('c3').value;
+
+  if (style === 'dusk')   { cTop = '#1a0a2a'; cMid = '#4a1a3a'; cBot = '#8a3a4a'; }
+  if (style === 'aurora') { cTop = '#020a1a'; cMid = '#0a3a3a'; cBot = '#0a5a2a'; }
+  if (style === 'void')   { cTop = '#050508'; cMid = '#0a0a10'; cBot = '#151520'; }
+  if (style === 'night')  { cTop = '#0a0a1a'; cMid = '#1a1a3a'; cBot = '#3a1a4a'; }
+
+  cv.width = W; cv.height = H;
+
+  // --- sky gradient
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0.0, cTop);
+  sky.addColorStop(0.6, cMid);
+  sky.addColorStop(1.0, cBot);
+  g.fillStyle = sky;
+  g.fillRect(0, 0, W, H);
+
+  // --- stars (denser in upper half)
+  seed = Math.floor(Math.random() * 1e9);   // fresh layout every render
+  for (let i = 0; i < starN; i++) {
+    const x = rand() * W;
+    const y = Math.pow(rand(), 1.4) * H * 0.7;
+    const r = rand() * 1.6 + 0.25;
+    const a = rand() * 0.75 + 0.2;
+    g.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
+    g.beginPath();
+    g.arc(x, y, r, 0, Math.PI * 2);
+    g.fill();
+  }
+
+  // --- a few brighter "hero" stars with a soft glow
+  for (let i = 0; i < 12; i++) {
+    const x = rand() * W;
+    const y = rand() * H * 0.55;
+    const r = rand() * 2 + 1.5;
+    const grad = g.createRadialGradient(x, y, 0, x, y, r * 6);
+    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(x - r * 6, y - r * 6, r * 12, r * 12);
+  }
+
+  // --- distant hills silhouette
+  const hillColor = 'rgba(4,4,10,0.98)';
+  g.fillStyle = hillColor;
+  g.beginPath();
+  g.moveTo(0, H);
+  for (let x = 0; x <= W; x += 4) {
+    const t = x / W;
+    const y = H - hillH
+            - Math.sin(t * 6.3 + 1.1) * (hillH * 0.28)
+            - Math.sin(t * 18.4)       * (hillH * 0.14)
+            - Math.sin(t * 41.7)       * (hillH * 0.06);
+    g.lineTo(x, y);
+  }
+  g.lineTo(W, H);
+  g.closePath();
+  g.fill();
+
+  // --- foreground haze
+  if (fogA > 0) {
+    const [r, gr, b] = hexToRgb(cBot);
+    const fog = g.createLinearGradient(0, H * 0.7, 0, H);
+    fog.addColorStop(0, `rgba(${r},${gr},${b},0)`);
+    fog.addColorStop(1, `rgba(${r},${gr},${b},${(fogA * 0.7).toFixed(2)})`);
+    g.fillStyle = fog;
+    g.fillRect(0, H * 0.7, W, H * 0.3);
+  }
+
+  // --- vignette on edges
+  if (vigA > 0) {
+    const vg = g.createRadialGradient(W/2, H/2, Math.min(W,H) * 0.25,
+                                      W/2, H/2, Math.max(W,H) * 0.75);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, `rgba(0,0,0,${vigA.toFixed(2)})`);
+    g.fillStyle = vg;
+    g.fillRect(0, 0, W, H);
+  }
+
+  // scale preview to fit stage
+  const stage = document.getElementById('stage');
+  const maxW = stage.clientWidth  - 32;
+  const maxH = stage.clientHeight - 32;
+  const s = Math.min(maxW / W, maxH / H, 1);
+  cv.style.width  = Math.round(W * s) + 'px';
+  cv.style.height = Math.round(H * s) + 'px';
+
+  document.getElementById('status').textContent =
+    `${W} × ${H}  ·  ${(W*H*4/1024/1024).toFixed(1)} MB in memory`;
+}
+
+// Live binding
+['W','H','stars','hill','fog','vig','c1','c2','c3','style'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    if (id === 'stars') document.getElementById('starVal').textContent = el.value;
+    if (id === 'hill')  document.getElementById('hillVal').textContent  = el.value;
+    if (id === 'fog')   document.getElementById('fogVal').textContent   = el.value;
+    if (id === 'vig')   document.getElementById('vigVal').textContent   = el.value;
+    render();
+  });
+});
+document.getElementById('regenerate').onclick = render;
+
+// Download
+document.getElementById('download').onclick = () => {
+  cv.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'panorama.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    document.getElementById('status').textContent = '✔ Downloaded panorama.png';
+  }, 'image/png');
+};
+
+// Initial size for sliders display
+document.getElementById('starVal').textContent = document.getElementById('stars').value;
+document.getElementById('hillVal').textContent = document.getElementById('hill').value;
+document.getElementById('fogVal').textContent  = document.getElementById('fog').value;
+document.getElementById('vigVal').textContent  = document.getElementById('vig').value;
+
+render();
+window.addEventListener('resize', render);
+</script>
+</body>
+</html>
